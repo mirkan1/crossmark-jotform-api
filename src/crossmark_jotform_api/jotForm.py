@@ -21,7 +21,6 @@ class JotForm(ABC):
         self.submissions = []
         self.submission_data["submissions"] = {}
         self.set_data()
-        self.get_submission_ids()
 
     def __set_submission_data(self, submission_data):
         submissions_dict = {}
@@ -125,17 +124,16 @@ class JotForm(ABC):
 
     def set_data(self):
         self.data = requests.get(self.url, timeout=15).json()
-        re_count = self.data['resultSet']['count']
-        # count = self.get_submissions_count()
-        self.submission_count += re_count
+        count = self.data['resultSet']['count']
+        self.submission_count += count
         self.submission_data["submissions"].update(
             self.__set_submission_data(
                 self.data['content']
             )
         )
-        if re_count == self.data['resultSet']['limit']:
+        if count == self.data['resultSet']['limit']:
             self.set_url_param(
-                "offset", self.data['resultSet']['offset']+1)
+                "offset", self.data['resultSet']['offset'] + count)
             return self.set_data()
         self.get_submission_ids()
 
