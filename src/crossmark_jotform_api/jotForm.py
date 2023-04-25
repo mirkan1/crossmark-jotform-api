@@ -12,19 +12,22 @@ class JotForm(ABC):
         self.form_id = form_id
         self.url = "https://api.jotform.com/form/" + form_id + \
             "/submissions?limit=1000&apiKey=" + api_key
-        self.set_url_param("orderby", "id")
+        self.set_url_param("orderby", "updated_at")
         self.set_url_param("offset", "0")
         self.submission_ids = []
         self.submission_data = {}
         self.updating_process = False
         self.submission_count = 0
+        self.submissions = []
+        self.submission_data["submissions"] = {}
         self.set_data()
         self.get_submission_ids()
 
     def __set_submission_data(self, submission_data):
         submissions_dict = {}
         for i in submission_data:
-            submissions_dict[i["id"]] = jotFormSubmission(i)
+            if i["id"] not in submissions_dict:
+                submissions_dict[i["id"]] = jotFormSubmission(i)
         return submissions_dict
 
     def get_submission_ids(self):
@@ -125,27 +128,16 @@ class JotForm(ABC):
         self.data = requests.get(self.url, timeout=15).json()
         re_count = self.data['resultSet']['count']
         # count = self.get_submissions_count()
+        self.submission_count += re_count
+        self.submission_data["submissions"].update(
+            self.__set_submission_data(
+                self.data['content']
+            )
+        )
         if re_count == self.data['resultSet']['limit']:
             self.set_url_param(
                 "offset", self.data['resultSet']['offset']+1)
-            self.submission_count += re_count
-            self.submissions = self.data['content']
-            if self.data['resultSet']['offset'] == 0:
-                self.submission_data["submissions"] = self.__set_submission_data(
-                    self.submissions)
-                return self.set_data()
-            else:
-                self.submission_data["submissions"].update(
-                    self.__set_submission_data(
-                        self.submissions
-                    )
-                )
-                return self.set_data()
-        else:
-            self.submission_count = re_count
-            self.submissions = self.data['content']
-            self.submission_data["submissions"] = self.__set_submission_data(
-                self.submissions)
+            return self.set_data()
         self.get_submission_ids()
 
     def get_form(self):
@@ -155,7 +147,7 @@ class JotForm(ABC):
             return response.json()
         else:
             return None
-    
+
     def get_submissions_count(self):
         form = self.get_form()
         if form:
@@ -291,4 +283,3 @@ class jotFormSubmission(ABC):
             'client': self.client,
             'emails': self.get_emails(),
         }
-
