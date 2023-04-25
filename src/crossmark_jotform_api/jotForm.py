@@ -26,8 +26,7 @@ class JotForm(ABC):
     def __set_submission_data(self, submission_data):
         submissions_dict = {}
         for i in submission_data:
-            if i["id"] not in submissions_dict:
-                submissions_dict[i["id"]] = jotFormSubmission(i)
+            submissions_dict[i["id"]] = jotFormSubmission(i)
         return submissions_dict
 
     def get_submission_ids(self):
