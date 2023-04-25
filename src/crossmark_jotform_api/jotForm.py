@@ -12,7 +12,6 @@ class JotForm(ABC):
         self.form_id = form_id
         self.url = "https://api.jotform.com/form/" + form_id + \
             "/submissions?limit=1000&apiKey=" + api_key
-        self.set_url_param("orderby", "updated_at")
         self.set_url_param("offset", "0")
         self.submission_ids = []
         self.submission_data = {}
