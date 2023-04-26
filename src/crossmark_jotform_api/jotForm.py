@@ -1,6 +1,7 @@
 from abc import ABC
 import requests
 from datetime import datetime
+from urllib.parse import quote
 
 
 class JotForm(ABC):
@@ -62,13 +63,16 @@ class JotForm(ABC):
                 return submission_object
         return None
 
-    def get_submission_by_case_id(self, case_id):
+    def get_submission_by_case_id(self, case_id, tried=0):
         self.update()
         for submission in self.submissions:
             _id = submission['id']
             submission_object = self.get_submission(_id)
             if submission_object.case_id == case_id:
                 return submission_object
+        if not tried:
+            self.request_submission_by_case_id(case_id)
+            return self.get_submission_by_case_id(case_id, 1)
         return None
 
     def get_answer_by_text(self, submission_id, text):
@@ -135,6 +139,24 @@ class JotForm(ABC):
                 "offset", self.data['resultSet']['offset'] + count)
             return self.set_data()
         self.get_submission_ids()
+
+    def request_submission_by_case_id(self, case_id):
+        query = quote(f'''{{"q221:matches:answer":"{case_id}"}}''')
+        url = f"https://api.jotform.com/form/{self.form_id}/submissions?apiKey={self.api_key}&filter={query}"
+        response = requests.get(url)
+        if response.status_code != 200:
+            return None
+        _json = response.json()
+        return _json
+    
+    def set_new_submission(self, submission):
+        self.submission_data["submissions"].update(
+            self.__set_submission_data(
+                [submission]
+            )
+        )
+        self.submission_count += 1
+        self.submission_ids.append(submission['id'])
 
     def get_form(self):
         url = f"https://api.jotform.com/form/{self.form_id}?apiKey={self.api_key}"
