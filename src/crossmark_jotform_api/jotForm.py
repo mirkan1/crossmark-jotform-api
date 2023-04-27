@@ -7,7 +7,7 @@ from urllib.parse import quote
 class JotForm(ABC):
     version = 1.2
 
-    def __init__(self, api_key, form_id):
+    def __init__(self, api_key, form_id, timeout=30):
         self.update_timestamp = datetime.now().timestamp()
         self.api_key = api_key
         self.form_id = form_id
@@ -21,6 +21,7 @@ class JotForm(ABC):
         self.submissions = []
         self.submission_data["submissions"] = {}
         self.set_data()
+        self.timeout = timeout
 
     def __set_submission_data(self, submission_data):
         submissions_dict = {}
@@ -48,7 +49,7 @@ class JotForm(ABC):
 
     def get_submission_by_request(self, submission_id):
         requests.get("https://api.jotform.com/submission/" +
-                     submission_id + "?apiKey=" + self.api_key, timeout=15)
+                     submission_id + "?apiKey=" + self.api_key, self.timeout)
 
     def get_submission(self, submission_id):
         self.update()
@@ -107,7 +108,7 @@ class JotForm(ABC):
         query = f'submission[{answer_id}]={answer}'
         # &submission[{rsrEmailFieldId}]={email}&submission[{actionerSupervisorEmailField}]={actionerSupervisorEmail.lower()}&submission[{actionerSupervisorNameField}]={actionerSupervisorName.lower()}'
         url = f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}&{query}"
-        response = requests.request("POST", url, timeout=15)
+        response = requests.request("POST", url, self.timeout)
         if response.status_code == 200:
             return True
         else:
@@ -126,7 +127,7 @@ class JotForm(ABC):
             self.url += "&" + key + "=" + value
 
     def set_data(self):
-        self.data = requests.get(self.url, timeout=15).json()
+        self.data = requests.get(self.url, self.timeout).json()
         count = self.data['resultSet']['count']
         self.submission_count += count
         self.submission_data["submissions"].update(
@@ -148,7 +149,7 @@ class JotForm(ABC):
             return None
         _json = response.json()
         return _json
-    
+
     def set_new_submission(self, submission):
         self.submission_data["submissions"].update(
             self.__set_submission_data(
@@ -160,7 +161,7 @@ class JotForm(ABC):
 
     def get_form(self):
         url = f"https://api.jotform.com/form/{self.form_id}?apiKey={self.api_key}"
-        response = requests.request("GET", url, timeout=15)
+        response = requests.request("GET", url, self.timeout)
         if response.status_code == 200:
             return response.json()
         else:
