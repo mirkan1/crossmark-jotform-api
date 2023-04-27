@@ -2,7 +2,6 @@ from abc import ABC
 import requests
 from datetime import datetime
 from urllib.parse import quote
-import time
 
 
 class JotForm(ABC):
@@ -137,7 +136,8 @@ class JotForm(ABC):
         '''
             Sorts the submission data by id
         '''
-        sorted_tuples = sorted(self.submission_data.items(), key=lambda x: x[1].id, reverse=True)
+        sorted_tuples = sorted(self.submission_data.items(),
+                               key=lambda x: x[1].id, reverse=True)
         sorted_dict = {k: v for k, v in sorted_tuples}
         self.submission_data = sorted_dict
 
