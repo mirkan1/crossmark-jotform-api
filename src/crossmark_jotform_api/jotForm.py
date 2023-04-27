@@ -20,8 +20,8 @@ class JotForm(ABC):
         self.submission_count = 0
         self.submissions = []
         self.submission_data["submissions"] = {}
-        self.set_data()
         self.timeout = timeout
+        self.set_data()
 
     def __set_submission_data(self, submission_data):
         submissions_dict = {}
@@ -49,7 +49,7 @@ class JotForm(ABC):
 
     def get_submission_by_request(self, submission_id):
         requests.get("https://api.jotform.com/submission/" +
-                     submission_id + "?apiKey=" + self.api_key, self.timeout)
+                     submission_id + "?apiKey=" + self.api_key, timeout=self.timeout)
 
     def get_submission(self, submission_id):
         self.update()
@@ -108,7 +108,7 @@ class JotForm(ABC):
         query = f'submission[{answer_id}]={answer}'
         # &submission[{rsrEmailFieldId}]={email}&submission[{actionerSupervisorEmailField}]={actionerSupervisorEmail.lower()}&submission[{actionerSupervisorNameField}]={actionerSupervisorName.lower()}'
         url = f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}&{query}"
-        response = requests.request("POST", url, self.timeout)
+        response = requests.request("POST", url, timeout=self.timeout)
         if response.status_code == 200:
             return True
         else:
@@ -127,7 +127,7 @@ class JotForm(ABC):
             self.url += "&" + key + "=" + value
 
     def set_data(self):
-        self.data = requests.get(self.url, self.timeout).json()
+        self.data = requests.get(self.url, timeout=self.timeout).json()
         count = self.data['resultSet']['count']
         self.submission_count += count
         self.submission_data["submissions"].update(
@@ -161,7 +161,7 @@ class JotForm(ABC):
 
     def get_form(self):
         url = f"https://api.jotform.com/form/{self.form_id}?apiKey={self.api_key}"
-        response = requests.request("GET", url, self.timeout)
+        response = requests.request("GET", url, timeout=self.timeout)
         if response.status_code == 200:
             return response.json()
         else:
