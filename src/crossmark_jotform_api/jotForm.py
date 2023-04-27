@@ -2,36 +2,47 @@ from abc import ABC
 import requests
 from datetime import datetime
 from urllib.parse import quote
+import time
 
 
 class JotForm(ABC):
-    def __init__(self, api_key, form_id, timeout=30):
+    def __init__(self, api_key, form_id, timeout=30, debug=False):
         self.update_timestamp = datetime.now().timestamp()
         self.api_key = api_key
         self.form_id = form_id
         self.url = "https://api.jotform.com/form/" + form_id + \
             "/submissions?limit=1000&apiKey=" + api_key
         self.set_url_param("offset", "0")
-        self.submission_ids = []
+        self.submission_ids = set()
         self.submission_data = {}
         self.updating_process = False
         self.submission_count = 0
         self.submissions = []
-        self.submission_data["submissions"] = {}
         self.timeout = timeout
+        self.debug = debug
         self.set_data()
 
-    def __set_submission_data(self, submission_data):
+    def __print(self, text):
+        if self.debug:
+            print(text)
+
+    def __set_get_submission_data(self, submissions):
         submissions_dict = {}
-        for i in submission_data:
+        for i in submissions:
             submissions_dict[i["id"]] = jotFormSubmission(i)
+        # sorted_tuples = sorted(submissions_dict.items(), key=lambda x: x[1].id, reverse=True)
+        # submissions_dict = dict(sorted_tuples)
         return submissions_dict
 
     def get_submission_ids(self):
-        self.update()
-        for submission in self.submissions:
-            self.submission_ids.append(submission["id"])
         return self.submission_ids
+
+    def set_submission_ids(self):
+        for key, value in self.submission_data.items():
+            self.submission_ids.add(value.id)
+
+    def set_submission_count(self):
+        self.submission_count = len(self.submission_ids)
 
     def get_submission_data(self):
         self.update()
@@ -43,7 +54,7 @@ class JotForm(ABC):
 
     def get_submission_answers(self, submission_id):
         self.update()
-        return self.submission_data["submissions"][submission_id].answers
+        return self.submission_data[submission_id].answers
 
     def get_submission_by_request(self, submission_id):
         requests.get("https://api.jotform.com/submission/" +
@@ -51,7 +62,7 @@ class JotForm(ABC):
 
     def get_submission(self, submission_id):
         self.update()
-        return self.submission_data["submissions"][submission_id]
+        return self.submission_data[submission_id]
 
     def get_submission_id_by_text(self, text):
         self.update()
@@ -104,7 +115,6 @@ class JotForm(ABC):
     def update_submission_answer(self, submission_id, answer_id, answer):
         self.update()
         query = f'submission[{answer_id}]={answer}'
-        # &submission[{rsrEmailFieldId}]={email}&submission[{actionerSupervisorEmailField}]={actionerSupervisorEmail.lower()}&submission[{actionerSupervisorNameField}]={actionerSupervisorName.lower()}'
         url = f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}&{query}"
         response = requests.request("POST", url, timeout=self.timeout)
         if response.status_code == 200:
@@ -116,7 +126,6 @@ class JotForm(ABC):
         value = str(value)
         if key in self.url:
             params = self.url.split("&")
-            # also set the value next to the key
             for i in range(len(params)):
                 if key in params[i]:
                     params[i] = key + "=" + value
@@ -124,12 +133,19 @@ class JotForm(ABC):
         else:
             self.url += "&" + key + "=" + value
 
+    def _sort_submission_data_by_id(self):
+        '''
+            Sorts the submission data by id
+        '''
+        sorted_tuples = sorted(self.submission_data.items(), key=lambda x: x[1].id, reverse=True)
+        sorted_dict = {k: v for k, v in sorted_tuples}
+        self.submission_data = sorted_dict
+
     def set_data(self):
         self.data = requests.get(self.url, timeout=self.timeout).json()
         count = self.data['resultSet']['count']
-        self.submission_count += count
-        self.submission_data["submissions"].update(
-            self.__set_submission_data(
+        self.submission_data.update(
+            self.__set_get_submission_data(
                 self.data['content']
             )
         )
@@ -137,25 +153,34 @@ class JotForm(ABC):
             self.set_url_param(
                 "offset", self.data['resultSet']['offset'] + count)
             return self.set_data()
-        self.get_submission_ids()
+        self.set_global_data()
+
+    def set_global_data(self):
+        self._sort_submission_data_by_id()
+        self.set_submission_ids()
+        self.set_submission_count()
+        self.set_url_param("offset", "0")
 
     def request_submission_by_case_id(self, case_id):
+        '''
+            Requests the submission by case id
+            this function is used when the submission is not in the submission data
+        '''
         query = quote(f'''{{"q221:matches:answer":"{case_id}"}}''')
         url = f"https://api.jotform.com/form/{self.form_id}/submissions?apiKey={self.api_key}&filter={query}"
-        response = requests.get(url, timeout=self.timeout)
+        response = requests.get(url)
         if response.status_code != 200:
             return None
         _json = response.json()
         return _json
 
     def set_new_submission(self, submission):
-        self.submission_data["submissions"].update(
-            self.__set_submission_data(
+        self.submission_data.update(
+            self.__set_get_submission_data(
                 [submission]
             )
         )
-        self.submission_count += 1
-        self.submission_ids.append(submission['id'])
+        self.set_global_data()
 
     def get_form(self):
         url = f"https://api.jotform.com/form/{self.form_id}?apiKey={self.api_key}"
@@ -176,14 +201,14 @@ class JotForm(ABC):
             self.updating_process = True
             count = int(form['content']['count'])
             if count <= self.submission_count:
-                print("[INFO] No new submissions.")
-                return
-            now = datetime.now().timestamp()
-            its_been = now - self.update_timestamp
-            print(
-                f"[INFO] Its been {int(its_been/60)} minutes. Updating submission data...")
-            self.set_data()
-            self.update_timestamp = now
+                self.__print("[INFO] No new submissions.")
+            else:
+                now = datetime.now().timestamp()
+                its_been = now - self.update_timestamp
+                self.__print(
+                    f"[INFO] Its been {int(its_been/60)} minutes. Updating submission data...")
+                self.set_data()
+                self.update_timestamp = now
             self.updating_process = False
 
 
