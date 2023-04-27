@@ -5,8 +5,6 @@ from urllib.parse import quote
 
 
 class JotForm(ABC):
-    version = 1.2
-
     def __init__(self, api_key, form_id, timeout=30):
         self.update_timestamp = datetime.now().timestamp()
         self.api_key = api_key
@@ -144,7 +142,7 @@ class JotForm(ABC):
     def request_submission_by_case_id(self, case_id):
         query = quote(f'''{{"q221:matches:answer":"{case_id}"}}''')
         url = f"https://api.jotform.com/form/{self.form_id}/submissions?apiKey={self.api_key}&filter={query}"
-        response = requests.get(url)
+        response = requests.get(url, timeout=self.timeout)
         if response.status_code != 200:
             return None
         _json = response.json()
