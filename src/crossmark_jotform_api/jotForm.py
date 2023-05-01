@@ -231,6 +231,7 @@ class jotFormSubmission(ABC):
         self.store = self.get_answer_by_text('STORE')['answer']
         self.GUID = self.get_answer_by_text('GUID')['answer']
         self.client = self.get_answer_by_text('CLIENT')['answer']
+        self.emails = self.get_emails()
 
     def set_answers(self, answers):
         answers_arr = []
@@ -292,6 +293,10 @@ class jotFormSubmission(ABC):
         return {'answer': None}
 
     def get_emails(self):
+        # unsave method
+        # TODO: fix this with a better logic that always track if there is a changed happened in the class
+        if self.emails:
+            return self.emails
         emails = []
         for answer in self.answers_arr:
             if answer['type'] == 'control_email':
