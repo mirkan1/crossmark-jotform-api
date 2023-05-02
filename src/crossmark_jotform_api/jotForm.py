@@ -28,7 +28,7 @@ class JotForm(ABC):
     def __set_get_submission_data(self, submissions):
         submissions_dict = {}
         for i in submissions:
-            submissions_dict[i["id"]] = jotFormSubmission(i)
+            submissions_dict[i["id"]] = JotFormSubmission(i)
         # sorted_tuples = sorted(submissions_dict.items(), key=lambda x: x[1].id, reverse=True)
         # submissions_dict = dict(sorted_tuples)
         return submissions_dict
@@ -212,7 +212,7 @@ class JotForm(ABC):
             self.updating_process = False
 
 
-class jotFormSubmission(ABC):
+class JotFormSubmission(ABC):
     def __init__(self, submission_object):
         self.id = submission_object['id']
         self.form_id = submission_object['form_id']
