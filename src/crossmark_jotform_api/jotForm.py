@@ -117,6 +117,7 @@ class JotForm(ABC):
         url = f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}&{query}"
         response = requests.request("POST", url, timeout=self.timeout)
         if response.status_code == 200:
+            self.submission_data[submission_id].set_answer(answer_id, answer)
             return True
         else:
             return False
@@ -270,6 +271,12 @@ class JotFormSubmission(ABC):
                 'selectedFields': selectedFields
             })
         return answers_arr
+
+    def set_answer(self, answer_id:str, answer_value:str):
+        for i in range(len(self.answers_arr)):
+            if self.answers_arr[i]['key'] == answer_id:
+                self.answers_arr[i]['answer'] = answer_value
+        self.answers[answer_id]['answer'] = answer_value
 
     def get_answers(self):
         return self.answers_arr
