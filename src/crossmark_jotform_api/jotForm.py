@@ -16,7 +16,7 @@ class JotForm(ABC):
         self.submission_data = {}
         self.updating_process = False
         self.submission_count = 0
-        self.submissions = []
+        self.submissions = (lambda: [i.to_dict() for k,i in self.submission_data.items()])
         self.timeout = timeout
         self.debug = debug
         self.set_data()
@@ -34,15 +34,13 @@ class JotForm(ABC):
     def get_submission_ids(self):
         return self.submission_ids
 
-    def __set_submissions_and_ids(self):
+    def __set_submission_ids(self):
         """This function sets the submission memory. It is used for easier for loop for submissions. 
         It is called in the constructor, and time to time in other functions"""
         self.submission_ids = set()
-        self.submissions = []
         for key, value in self.submission_data.items():
             self.submission_ids.add(value.id)
-            self.submissions.append(value.to_dict())
-
+    
     def set_submission_count(self):
         self.submission_count = len(self.submission_ids)
 
@@ -68,18 +66,14 @@ class JotForm(ABC):
 
     def get_submission_id_by_text(self, text):
         self.update()
-        for submission in self.submissions:
-            _id = submission['id']
-            submission_object = self.get_submission(_id)
+        for key, submission_object in self.submission_data.items():
             if submission_object.get_answer_by_text(text):
                 return submission_object
         return None
 
     def get_submission_by_case_id(self, case_id, tried=0):
         self.update()
-        for submission in self.submissions:
-            _id = submission['id']
-            submission_object = self.get_submission(_id)
+        for key, submission_object in self.submission_data.items():
             if submission_object.case_id == case_id:
                 return submission_object
         if not tried:
@@ -121,10 +115,6 @@ class JotForm(ABC):
         response = requests.request("POST", url, timeout=self.timeout)
         if response.status_code == 200:
             self.submission_data[submission_id].set_answer(answer_id, answer)
-            for submission in self.submissions:
-                if submission['id'] == submission_id:
-                    submission['answers'][answer_id] = answer
-                    break
             return True
         else:
             return False
@@ -165,7 +155,7 @@ class JotForm(ABC):
 
     def set_global_data(self):
         self._sort_submission_data_by_id()
-        self.__set_submissions_and_ids()
+        self.__set_submission_ids()
         self.set_submission_count()
         self.set_url_param("offset", "0")
 
