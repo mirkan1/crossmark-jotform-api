@@ -29,16 +29,19 @@ class JotForm(ABC):
         submissions_dict = {}
         for i in submissions:
             submissions_dict[i["id"]] = JotFormSubmission(i)
-        # sorted_tuples = sorted(submissions_dict.items(), key=lambda x: x[1].id, reverse=True)
-        # submissions_dict = dict(sorted_tuples)
         return submissions_dict
 
     def get_submission_ids(self):
         return self.submission_ids
 
-    def set_submission_ids(self):
+    def __set_submissions_and_ids(self):
+        """This function sets the submission memory. It is used for easier for loop for submissions. 
+        It is called in the constructor, and time to time in other functions"""
+        self.submission_ids = set()
+        self.submissions = []
         for key, value in self.submission_data.items():
             self.submission_ids.add(value.id)
+            self.submissions.append(value.to_dict())
 
     def set_submission_count(self):
         self.submission_count = len(self.submission_ids)
@@ -118,6 +121,10 @@ class JotForm(ABC):
         response = requests.request("POST", url, timeout=self.timeout)
         if response.status_code == 200:
             self.submission_data[submission_id].set_answer(answer_id, answer)
+            for submission in self.submissions:
+                if submission['id'] == submission_id:
+                    submission['answers'][answer_id] = answer
+                    break
             return True
         else:
             return False
@@ -158,7 +165,7 @@ class JotForm(ABC):
 
     def set_global_data(self):
         self._sort_submission_data_by_id()
-        self.set_submission_ids()
+        self.__set_submissions_and_ids()
         self.set_submission_count()
         self.set_url_param("offset", "0")
 
