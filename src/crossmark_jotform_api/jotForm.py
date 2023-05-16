@@ -229,6 +229,7 @@ class JotFormSubmission(ABC):
         self.store = self.get_answer_by_text('STORE')['answer']
         self.GUID = self.get_answer_by_text('GUID')['answer']
         self.client = self.get_answer_by_text('CLIENT')['answer']
+        self.emails = self.get_emails()
 
     def set_answers(self, answers):
         answers_arr = []
