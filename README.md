@@ -12,3 +12,4 @@ specilized library for jotform api and crossmark needs
 - 2023-05-01: setted set_answer function.
 - 2023-05-10: deleted submissions array and enhanced the logic according to it
 - 2023-05-16: created emails on class initilaization so that one dont need to call get_emails function
+- 2023-05-16: summary for get_form function, format document, cleared some of the self.update and its fucntionality for faster performance
