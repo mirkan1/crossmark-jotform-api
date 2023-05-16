@@ -16,7 +16,8 @@ class JotForm(ABC):
         self.submission_data = {}
         self.updating_process = False
         self.submission_count = 0
-        self.submissions = (lambda: [i.to_dict() for k,i in self.submission_data.items()])
+        self.submissions = (lambda: [i.to_dict()
+                            for k, i in self.submission_data.items()])
         self.timeout = timeout
         self.debug = debug
         self.set_data()
@@ -40,7 +41,7 @@ class JotForm(ABC):
         self.submission_ids = set()
         for key, value in self.submission_data.items():
             self.submission_ids.add(value.id)
-    
+
     def set_submission_count(self):
         self.submission_count = len(self.submission_ids)
 
@@ -49,7 +50,6 @@ class JotForm(ABC):
         return self.submission_data
 
     def get_submission_count(self):
-        self.update()
         return self.submission_count
 
     def get_submission_answers(self, submission_id):
@@ -61,18 +61,15 @@ class JotForm(ABC):
                      submission_id + "?apiKey=" + self.api_key, timeout=self.timeout)
 
     def get_submission(self, submission_id):
-        self.update()
         return self.submission_data[submission_id]
 
     def get_submission_id_by_text(self, text):
-        self.update()
         for key, submission_object in self.submission_data.items():
             if submission_object.get_answer_by_text(text):
                 return submission_object
         return None
 
     def get_submission_by_case_id(self, case_id, tried=0):
-        self.update()
         for key, submission_object in self.submission_data.items():
             if submission_object.case_id == case_id:
                 return submission_object
@@ -109,7 +106,6 @@ class JotForm(ABC):
             submission_answers_by_question_id[answer["id"]] = answer["answer"]
 
     def update_submission_answer(self, submission_id, answer_id, answer):
-        self.update()
         query = f'submission[{answer_id}]={answer}'
         url = f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}&{query}"
         response = requests.request("POST", url, timeout=self.timeout)
@@ -181,6 +177,13 @@ class JotForm(ABC):
         self.set_global_data()
 
     def get_form(self):
+        """
+        Gets form data directly from Jotform so there is no data diffirence on this function.
+        It is slow since we are requesting data from Jotform.
+
+        Returns:
+            _type_: either JSON or None
+        """
         url = f"https://api.jotform.com/form/{self.form_id}?apiKey={self.api_key}"
         response = requests.request("GET", url, timeout=self.timeout)
         if response.status_code == 200:
@@ -191,20 +194,19 @@ class JotForm(ABC):
     def get_submissions_count(self):
         form = self.get_form()
         if form:
-            return form['content']['count']
+            return int(form['content']['count'])
 
     def update(self):
-        form = self.get_form()
-        if not self.updating_process and form:
+        if not self.updating_process:
             self.updating_process = True
-            count = int(form['content']['count'])
+            count = self.get_submissions_count()
             if count <= self.submission_count:
                 self.__print("[INFO] No new submissions.")
             else:
                 now = datetime.now().timestamp()
                 its_been = now - self.update_timestamp
                 self.__print(
-                    f"[INFO] Its been {int(its_been/60)} minutes. Updating submission data...")
+                    f"[INFO] Its been {int(its_been/60)} minutes since last update. Updating submission data...")
                 self.set_data()
                 self.update_timestamp = now
             self.updating_process = False
@@ -269,7 +271,7 @@ class JotFormSubmission(ABC):
             })
         return answers_arr
 
-    def set_answer(self, answer_id:str, answer_value:str):
+    def set_answer(self, answer_id: str, answer_value: str):
         for i in range(len(self.answers_arr)):
             if self.answers_arr[i]['key'] == answer_id:
                 self.answers_arr[i]['answer'] = answer_value
