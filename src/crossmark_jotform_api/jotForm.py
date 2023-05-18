@@ -226,10 +226,7 @@ class JotFormSubmission(ABC):
         self.answers = submission_object['answers']
         self.answers_arr = self.set_answers(self.answers)
         self.case_id = self.get_answer_by_text('CASE')['answer']
-        self.editor = self.get_answer_by_text('EDITOR')['answer']
-        self.status = self.get_answer_by_text('STATUS')['answer']
         self.store = self.get_answer_by_text('STORE')['answer']
-        self.GUID = self.get_answer_by_text('GUID')['answer']
         self.client = self.get_answer_by_text('CLIENT')['answer']
         self.emails = self.get_emails()
 
@@ -327,16 +324,14 @@ class JotFormSubmission(ABC):
             'form_id': self.form_id,
             'ip': self.ip,
             'created_at': self.get_day_from_date(self.created_at),
-            'status': self.status,
+            'status': self.get_answer_by_text('STATUS')['answer'],
             'new': self.new,
             'flag': self.flag,
             'notes': self.notes,
             'updated_at': self.updated_at,
             'case_id': self.case_id,
-            'editor': self.editor,
             'store': self.store,
             'store_number': self.get_store_number_from_store(self.store),
-            'GUID': self.GUID,
             'client': self.client,
             'emails': self.get_emails(),
         }
