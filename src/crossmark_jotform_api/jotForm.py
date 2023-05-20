@@ -57,7 +57,7 @@ class JotForm(ABC):
         return self.submission_data[submission_id].answers
 
     def get_submission_by_request(self, submission_id):
-        requests.get("https://api.jotform.com/submission/" +
+        return requests.get("https://api.jotform.com/submission/" +
                      submission_id + "?apiKey=" + self.api_key, timeout=self.timeout)
 
     def get_submission(self, submission_id):
