@@ -195,6 +195,7 @@ class JotForm(ABC):
         form = self.get_form()
         if form:
             return int(form['content']['count'])
+        return 1
 
     def update(self):
         if not self.updating_process:
