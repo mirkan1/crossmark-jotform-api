@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 
 class JotForm(ABC):
-    def __init__(self, api_key, form_id, timeout=30, debug=False):
+    def __init__(self, api_key, form_id, timeout=45, debug=False):
         self.update_timestamp = datetime.now().timestamp()
         self.api_key = api_key
         self.form_id = form_id
