@@ -197,11 +197,11 @@ class JotForm(ABC):
             return int(form['content']['count'])
         return 1
 
-    def update(self):
+    def update(self, force=False):
         if not self.updating_process:
             self.updating_process = True
             count = self.get_submissions_count()
-            if count <= self.submission_count:
+            if count <= self.submission_count and not force:
                 self.__print("[INFO] No new submissions.")
             else:
                 now = datetime.now().timestamp()
