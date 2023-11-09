@@ -14,3 +14,4 @@ specilized library for jotform api and crossmark needs
 - 2023-05-16: created emails on class initilaization so that one dont need to call get_emails function
 - 2023-05-16: summary for get_form function, format document, cleared some of the self.update and its fucntionality for faster performance
 - 2023-10-20: force parameter for update function so that user can call it without depending on the submission count change, This library need an inner check for the highest updated_at value descending order. 
+- 2023-11-08: Unused param selectedFields is omited, added constructer function for answer to smaller parts [maxValue, order, selectedField, cfname, static]

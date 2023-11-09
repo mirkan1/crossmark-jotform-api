@@ -2,3 +2,4 @@ wheel
 pytest
 build
 twine
+setuptools>=61.0

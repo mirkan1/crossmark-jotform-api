@@ -225,6 +225,17 @@ class JotFormSubmission(ABC):
         self.notes = submission_object['notes']
         self.updated_at = submission_object['updated_at']
         self.answers = submission_object['answers']
+        for key, answer in self.answers.items():
+            if "maxValue" in answer:
+                del answer['maxValue']
+            if "order" in answer:
+                del answer['order']
+            if "selectedField" in answer:
+                del answer['selectedField']
+            if "cfname" in answer:
+                del answer['cfname']
+            if "static" in answer:
+                del answer['static']
         self.answers_arr = self.set_answers(self.answers)
         self.case_id = self.get_answer_by_text('CASE')['answer']
         self.store = self.get_answer_by_text('STORE')['answer']
@@ -254,10 +265,6 @@ class JotFormSubmission(ABC):
                 file = value['file']
             else:
                 file = None
-            if 'selectedFields' in value:
-                selectedFields = value['selectedFields']
-            else:
-                selectedFields = None
             answers_arr.append({
                 'key': key,
                 'name': name,
@@ -265,7 +272,6 @@ class JotFormSubmission(ABC):
                 'type': _type,
                 'text': text,
                 'file': file,
-                'selectedFields': selectedFields
             })
         return answers_arr
 
