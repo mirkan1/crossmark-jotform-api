@@ -105,10 +105,19 @@ class JotForm(ABC):
         for answer in submission_answers:
             submission_answers_by_question_id[answer["id"]] = answer["answer"]
 
+    def delete_submission(self, submission_id):
+        url = f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}"
+        response = requests.delete(url, timeout=self.timeout)
+        if response.status_code == 200:
+            del self.submission_data[submission_id]
+            return True
+        else:
+            return False
+
     def update_submission_answer(self, submission_id, answer_id, answer):
         query = f'submission[{answer_id}]={answer}'
         url = f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}&{query}"
-        response = requests.request("POST", url, timeout=self.timeout)
+        response = requests.post(url, timeout=self.timeout)
         if response.status_code == 200:
             self.submission_data[submission_id].set_answer(answer_id, answer)
             return True
@@ -185,7 +194,7 @@ class JotForm(ABC):
             _type_: either JSON or None
         """
         url = f"https://api.jotform.com/form/{self.form_id}?apiKey={self.api_key}"
-        response = requests.request("GET", url, timeout=self.timeout)
+        response = requests.get(url, timeout=self.timeout)
         if response.status_code == 200:
             return response.json()
         else:
@@ -211,9 +220,28 @@ class JotForm(ABC):
                 self.set_data()
                 self.update_timestamp = now
             self.updating_process = False
+        
+    def get_user_data_by_email(self, email):
+        if not email:
+            return None
+        email = email.lower()
+        self.update()
+        submissions = []
+        for key, submission in self.submission_data.items():
+            submission_object = self.get_submission(submission.id)
+            email_objects = [i.lower() for i in submission_object.emails if i]
+            if email in email_objects:
+                submissions.append(submission_object)
+        return submissions
 
 
 class JotFormSubmission(ABC):
+    """Base class for JotFormSubmission.
+    Takes a submission object and creates a submission object from it.
+
+    Args:
+        ABC (_type_): parent class
+    """
     def __init__(self, submission_object):
         self.id = submission_object['id']
         self.form_id = submission_object['form_id']
@@ -342,3 +370,65 @@ class JotFormSubmission(ABC):
             'client': self.client,
             'emails': self.get_emails(),
         }
+
+    def turn_into_american_datetime_format(self,date,cur_frmt='%Y-%m-%d %H:%M:%S',end_frmt='%m/%d/%Y %I:%M %p'):
+        if date == None:
+            return None
+        elif isinstance(date, dict):
+            if 'answer' in date:
+                date = date['answer']
+            elif 'datetime' in date:
+                date = date['datetime']
+        # YYYY-MM-DD hh:mm:ss
+        if isinstance(date, str):
+            return datetime.strptime(date, cur_frmt).strftime(end_frmt)
+        elif isinstance(date, datetime):
+            return date.strftime('%m/%d/%Y %I:%M %p')
+        else:
+            return None
+
+    def text_to_html(self, text):
+        if not text:
+            return None
+        text = text.replace('\r\n', '<br>')  # Convert Windows-style line breaks
+        text = text.replace('\n', '<br>')    # Convert Unix-style line breaks
+        text = text.replace('\r', '<br>')    # Convert Mac-style line breaks
+        paragraphs = text.split('<br><br>')  # Split the text into paragraphs
+        
+        html = ''
+        for paragraph in paragraphs:
+            html += '<p>' + paragraph + '</p>'
+        return html
+    
+    def split_domain_from_email(self, email:str):
+        """if @ in email, split and return the first part of the string
+
+        Args:
+            email (str): string with @ in it
+
+        Returns:
+            _type_: first half of an email address. 
+            e.g: 'test' from 'test@test.com'
+        """
+        if not email:
+            return None
+        elif '@' in email:
+            return email.split('@')[0]
+        else:
+            return email
+
+    def get_value(self, obj):
+        if isinstance(obj, str):
+            return obj.strip()
+        elif isinstance(obj, dict):
+            if 'answer' in obj:
+                answer = obj['answer']
+                if isinstance(answer, list):
+                    return answer[0]
+                return answer
+            elif len(obj) > 1:
+                return obj
+            elif len(obj) == 1:
+                return next(iter(obj.values()))
+        else:
+            return None

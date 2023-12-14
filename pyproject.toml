@@ -1,10 +1,13 @@
 [build-system]
-requires = ["setuptools>=61.0","requests>=2.22.0","wheel"]
+requires = [
+  "setuptools>=61.0",
+  "wheel"
+]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "crossmark-jotform-api"
-version = "0.3.6"
+version = "0.4.0"
 authors = [
   { name="Renas Mirkan Kilic", email="mirkanbaba1@gmail.com" },
 ]
@@ -17,7 +20,11 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+  "requests>=2.22.0",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/mirkan1/crossmark-jotform-api"
 "Bug Tracker" = "https://github.com/mirkan1/crossmark-jotform-api/issues"
+
