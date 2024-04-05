@@ -64,13 +64,13 @@ class JotForm(ABC):
         return self.submission_data[submission_id]
 
     def get_submission_id_by_text(self, text):
-        for key, submission_object in self.submission_data.items():
+        for _, submission_object in self.submission_data.items():
             if submission_object.get_answer_by_text(text):
                 return submission_object
         return None
 
     def get_submission_by_case_id(self, case_id, tried=0):
-        for key, submission_object in self.submission_data.items():
+        for _, submission_object in self.submission_data.items():
             if submission_object.case_id == case_id:
                 return submission_object
         if not tried:
