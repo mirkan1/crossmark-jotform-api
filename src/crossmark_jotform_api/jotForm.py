@@ -79,16 +79,25 @@ class JotForm(ABC):
         return None
 
     def get_answer_by_text(self, submission_id, text):
-        self.update()
-        return self.get_submission(submission_id).get_answer_by_text(text)
+        try:
+            return self.get_submission(submission_id).get_answer_by_text(text)
+        except:
+            self.update()
+            return self.get_submission(submission_id).get_answer_by_text(text)
 
     def get_answer_by_name(self, submission_id, name):
-        self.update()
-        return self.get_submission(submission_id).get_answer_by_name(name)
+        try:
+            return self.get_submission(submission_id).get_answer_by_name(name)
+        except:
+            self.update()
+            return self.get_submission(submission_id).get_answer_by_name(name)
 
     def get_answer_by_key(self, submission_id, key):
-        self.update()
-        return self.get_submission(submission_id).get_answer_by_key(key)
+        try:
+            return self.get_submission(submission_id).get_answer_by_key(key)
+        except:
+            self.update()
+            return self.get_submission(submission_id).get_answer_by_key(key)
 
     def get_submission_answers_by_question(self, submission_id):
         self.update()
@@ -253,7 +262,7 @@ class JotFormSubmission(ABC):
         self.notes = submission_object['notes']
         self.updated_at = submission_object['updated_at']
         self.answers = submission_object['answers']
-        for key, answer in self.answers.items():
+        for _, answer in self.answers.items():
             if "maxValue" in answer:
                 del answer['maxValue']
             if "order" in answer:
@@ -264,6 +273,12 @@ class JotFormSubmission(ABC):
                 del answer['cfname']
             if "static" in answer:
                 del answer['static']
+            if "type" in answer and answer['type'] != 'control_email':
+                del answer['type']
+            if "sublabels" in answer:
+                del answer['sublabels']
+            if "timeFormat" in answer:
+                del answer['timeFormat']
         self.answers_arr = self.set_answers(self.answers)
         self.case_id = self.get_answer_by_text('CASE')['answer']
         self.store = self.get_answer_by_text('STORE')['answer']
@@ -337,10 +352,11 @@ class JotFormSubmission(ABC):
         Returns:
             _type_: emails array
         """
-        # unsave method
-        # TODO: fix this with a better logic that always track if there is a changed happened in the class
+        # unsafe method
         emails = []
         for answer in self.answers_arr:
+            if "type" not in answer:
+                continue
             if answer['type'] == 'control_email':
                 emails.append(answer['answer'])
         return emails
@@ -394,12 +410,12 @@ class JotFormSubmission(ABC):
         text = text.replace('\n', '<br>')    # Convert Unix-style line breaks
         text = text.replace('\r', '<br>')    # Convert Mac-style line breaks
         paragraphs = text.split('<br><br>')  # Split the text into paragraphs
-        
+
         html = ''
         for paragraph in paragraphs:
             html += '<p>' + paragraph + '</p>'
         return html
-    
+
     def split_domain_from_email(self, email:str):
         """if @ in email, split and return the first part of the string
 
