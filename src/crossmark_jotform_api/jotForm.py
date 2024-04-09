@@ -123,12 +123,18 @@ class JotForm(ABC):
         else:
             return False
 
-    def update_submission_answer(self, submission_id, answer_id, answer):
-        query = f'submission[{answer_id}]={answer}'
-        url = f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}&{query}"
-        response = requests.post(url, timeout=self.timeout)
+    def update_submission_answer(self, submission_id, field_id, answer):
+        if isinstance(answer, list):
+            data = {
+                f"submission[{field_id}][]": answer
+            }
+            response = requests.post(f"https://api.jotform.com/submission/{submission_id}", params={"apiKey": self.api_key}, data=data)
+        else:
+            query = f'submission[{field_id}]={answer}'
+            url = f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}&{query}"
+            response = requests.post(url, timeout=self.timeout)
         if response.status_code == 200:
-            self.submission_data[submission_id].set_answer(answer_id, answer)
+            self.submission_data[submission_id].set_answer(field_id, answer)
             return True
         else:
             return False
