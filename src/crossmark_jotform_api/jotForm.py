@@ -294,26 +294,21 @@ class JotFormSubmission(ABC):
     def set_answers(self, answers):
         answers_arr = []
         for key, value in answers.items():
+            name = None
             if 'name' in value:
                 name = value['name']
-            else:
-                name = None
+            answer = None
             if 'answer' in value:
                 answer = value['answer']
-            else:
-                answer = None
+            _type = None
             if 'type' in value:
                 _type = value['type']
-            else:
-                _type = None
+            text = None
             if 'text' in value:
                 text = value['text']
-            else:
-                text = None
+            file = None
             if 'file' in value:
                 file = value['file']
-            else:
-                file = None
             answers_arr.append({
                 'key': key,
                 'name': name,
