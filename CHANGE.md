@@ -1,4 +1,12 @@
 
+- 2024-06-11 v2.1.0:
+  * get_submission_by_request is refactored.
+  * get_submission_id_by_text now has additional parameter `text` to get the submission id by its text.
+  * get_list_of_questions is inturduced to get the list of questions in the form.
+  * create_submission is intruduced to create a submission for the form.
+  * create_submission_using_another is intruduced to create a submission for the form using another submission.
+  * turn_into_american_datetime_format is refactored and now throwing an error if the input is not a valid datetime, and typing is added.
+  * update_submission_answer is refactored
 - 2024-06-11 v2.0.1:
   * made changes on the `set_answer` function, now it can set the value of the field even if it is a multiselect checkbox.
 - 2024-04-09 v2.0.0:

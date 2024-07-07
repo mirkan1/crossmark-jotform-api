@@ -1,7 +1,8 @@
 from abc import ABC
-import requests
 from datetime import datetime
+from typing import Union, Dict
 from urllib.parse import quote
+import requests
 
 
 class JotForm(ABC):
@@ -57,15 +58,20 @@ class JotForm(ABC):
         return self.submission_data[submission_id].answers
 
     def get_submission_by_request(self, submission_id):
-        return requests.get("https://api.jotform.com/submission/" +
-                     submission_id + "?apiKey=" + self.api_key, timeout=self.timeout)
+        url = f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}"
+        response = requests.get(url, timeout=self.timeout)
+        if response.status_code == 200:
+            response = response.json()
+            return response["content"]
+        else:
+            return None
 
     def get_submission(self, submission_id):
         return self.submission_data[submission_id]
 
-    def get_submission_id_by_text(self, text):
+    def get_submission_id_by_text(self, text, answer_text):
         for _, submission_object in self.submission_data.items():
-            if submission_object.get_answer_by_text(text):
+            if submission_object.get_answer_by_text(text)["answer"] == answer_text:
                 return submission_object
         return None
 
@@ -114,21 +120,88 @@ class JotForm(ABC):
         for answer in submission_answers:
             submission_answers_by_question_id[answer["id"]] = answer["answer"]
 
+    def get_list_of_questions(self):
+        """## jotform endpoint of form/{id}/questions
+
+        ### Returns:
+            - `object` or 'bool': questions list if successful, false if not
+        """
+        url = f"https://api.jotform.com/form/{self.form_id}/questions?apiKey={self.api_key}"
+        response = requests.get(url, timeout=self.timeout)
+        if response.status_code == 200:
+            response = response.json()
+            return response['content']
+        return None
+
     def delete_submission(self, submission_id):
         url = f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}"
         response = requests.delete(url, timeout=self.timeout)
         if response.status_code == 200:
             del self.submission_data[submission_id]
             return True
-        else:
-            return False
+        return False
+    
+    def create_submission(self, submission):
+        """## This function creates a submission in Jotform 
+        then sets the new submission to the submission data.
+
+        ### Args:
+            - `submission (pseudo sumbission dictionary)`:
+               {
+                    "submission[1]": "value",
+                    "submission[2]": "value",
+                    ...
+               }
+
+        ### Returns:
+            - `bool` or 'string': new created submission's id if successful, false if not
+        """
+        url = f"https://api.jotform.com/form/{self.form_id}/submissions?apiKey={self.api_key}"
+        response = requests.post(url, data=submission, timeout=self.timeout)
+        if response.status_code == 200:
+            response = response.json()
+            _id = response['content']['submissionID']
+            submission = self.get_submission_by_request(_id)
+            self.set_new_submission(submission)
+            return _id
+        return False
+
+    def create_submission_using_another(self, submission_data, submission_to_copy):
+        """## This function creates a submission in Jotform 
+        then sets the new submission to the submission data.
+
+        ### Args:
+            - `submission_data (sumbission dictionary)`:
+            contains name value pairs of the submission
+            e.g:
+               {
+                    "data": "value",
+                    "data2": "value",
+                    ...
+               }
+            - submission_to_copy (JotFormSubmission): submission object to copy
+
+        ### Returns:
+            - `bool`: true if successful, false if not
+        """
+        data = {}
+        questions = self.get_list_of_questions()
+        for q in questions:
+            name = questions[q]["name"]
+            if name in submission_data:
+                data[f"submission[{q}]"] = submission_data[name]
+            else:
+                answer = submission_to_copy.get_answer_by_name(name)["answer"]
+                if answer:
+                    data[f"submission[{q}]"] = answer
+        return self.create_submission(data)
 
     def update_submission_answer(self, submission_id, field_id, answer):
         if isinstance(answer, list):
             data = {
                 f"submission[{field_id}][]": answer
             }
-            response = requests.post(f"https://api.jotform.com/submission/{submission_id}", params={"apiKey": self.api_key}, data=data)
+            response = requests.post(f"https://api.jotform.com/submission/{submission_id}", params={"apiKey": self.api_key}, data=data, timeout=self.timeout)
         else:
             query = f'submission[{field_id}]={answer}'
             url = f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}&{query}"
@@ -136,8 +209,7 @@ class JotForm(ABC):
         if response.status_code == 200:
             self.submission_data[submission_id].set_answer(field_id, answer)
             return True
-        else:
-            return False
+        return False
 
     def set_url_param(self, key, value):
         value = str(value)
@@ -388,21 +460,20 @@ class JotFormSubmission(ABC):
             'emails': self.get_emails(),
         }
 
-    def turn_into_american_datetime_format(self,date,cur_frmt='%Y-%m-%d %H:%M:%S',end_frmt='%m/%d/%Y %I:%M %p'):
-        if date == None:
-            return None
-        elif isinstance(date, dict):
-            if 'answer' in date:
-                date = date['answer']
-            elif 'datetime' in date:
-                date = date['datetime']
-        # YYYY-MM-DD hh:mm:ss
+    def turn_into_american_datetime_format(self,
+                                           date: Union[str, Dict[str, str], datetime],
+                                           cur_frmt: str = '%Y-%m-%d %H:%M:%S',
+                                           end_frmt: str = '%m/%d/%Y %I:%M %p') -> str:
+        if isinstance(date, dict):
+            date = date.get('answer') or date.get('datetime')
+
         if isinstance(date, str):
-            return datetime.strptime(date, cur_frmt).strftime(end_frmt)
-        elif isinstance(date, datetime):
-            return date.strftime('%m/%d/%Y %I:%M %p')
-        else:
-            return None
+            date = datetime.strptime(date, cur_frmt)
+
+        if isinstance(date, datetime):
+            return date.strftime(end_frmt)
+
+        raise ValueError("Invalid date format")
 
     def text_to_html(self, text):
         if not text:
