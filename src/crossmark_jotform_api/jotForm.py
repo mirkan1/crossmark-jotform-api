@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Union, Dict
 from urllib.parse import quote
 import requests
+from requests.exceptions import RequestException
 from time import sleep
 
 class JotForm(ABC):
@@ -237,7 +238,7 @@ class JotForm(ABC):
         sorted_dict = {k: v for k, v in sorted_tuples}
         self.submission_data = sorted_dict
 
-    def set_data(self, try_again:int=0) -> None:
+    def set_data(self, try_again: int = 0) -> None:
         """## This function sets the data from the Jotform API
 
         ### Args:
@@ -247,27 +248,32 @@ class JotForm(ABC):
             - `None`: if fails
             - `True`: if successful
         """
-        response = requests.get(self.url, timeout=self.timeout)
-        if response.status_code != 200:
-            self._print(f"Error: {response.status_code}")
-            if try_again < 3:
+        try:
+            response = requests.get(self.url, timeout=self.timeout)
+            response.raise_for_status()  # Raises HTTPError for bad responses (4xx and 5xx)
+
+            self.data = response.json()
+            count = self.data['resultSet']['count']
+            self.submission_data.update(
+                self.__set_get_submission_data(
+                    self.data['content']
+                )
+            )
+            if count == self.data['resultSet']['limit']:
+                self.set_url_param(
+                    "offset", self.data['resultSet']['offset'] + count)
                 sleep(.33)
+                return self.set_data()
+
+            self.set_global_data()
+            return True
+
+        except RequestException as e:
+            self._print(f"Request failed: {e}")
+            if try_again < 3:
+                sleep(1)
                 return self.set_data(try_again + 1)
             return None
-        self.data = response.json()
-        count = self.data['resultSet']['count']
-        self.submission_data.update(
-            self.__set_get_submission_data(
-                self.data['content']
-            )
-        )
-        if count == self.data['resultSet']['limit']:
-            self.set_url_param(
-                "offset", self.data['resultSet']['offset'] + count)
-            sleep(.33)
-            return self.set_data()
-        self.set_global_data()
-        return True
 
     def set_global_data(self):
         self._sort_submission_data_by_id()

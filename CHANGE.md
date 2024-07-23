@@ -1,4 +1,6 @@
 
+- 2024-07-23 v2.1.3:
+  * `set_data` function is refactored for a more robust solution on a `ChunkedEncodingError`
 - 2024-06-11 v2.1.1:
   * `__print` function's name changed into `_print`.
   * `set_data` function is refactored, `time.sleep` is added to avoid the rate limit and 3 tries are added to avoid the connection error.
