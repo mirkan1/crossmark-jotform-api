@@ -1,4 +1,7 @@
 
+- 2024-07-23 v2.1.4:
+  * some typing are added to the functions
+  * `ms-python.black-formatter` is used for formatting the code
 - 2024-07-23 v2.1.3:
   * `set_data` function is refactored for a more robust solution on a `ChunkedEncodingError`
 - 2024-06-11 v2.1.1:
