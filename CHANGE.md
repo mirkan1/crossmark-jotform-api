@@ -1,4 +1,7 @@
 
+- 2024-09-27 v2.1.5:
+  * fixed a bug where iteration throwing runtime error on `get_list_of_questions` function
+  * hidden some warnings related to not existing module description
 - 2024-07-23 v2.1.4:
   * some typing are added to the functions
   * `ms-python.black-formatter` is used for formatting the code

@@ -1,10 +1,13 @@
+"""## [JOTFORM API DOCS](https://www.api.jotform.com)"""
+
+# pylint: disable=C0115, C0116, C0103
 from abc import ABC
 from datetime import datetime
 from typing import Union, Dict
 from urllib.parse import quote
+from time import sleep
 import requests
 from requests.exceptions import RequestException
-from time import sleep
 
 
 class JotForm(ABC):
@@ -24,7 +27,7 @@ class JotForm(ABC):
         self.updating_process = False
         self.submission_count = 0
         self.submissions = lambda: [
-            i.to_dict() for k, i in self.submission_data.items()
+            i.to_dict() for k, i in self.submission_data.copy().items()
         ]
         self.timeout = timeout
         self.debug = debug
@@ -47,7 +50,7 @@ class JotForm(ABC):
         """This function sets the submission memory. It is used for easier for loop for submissions.
         It is called in the constructor, and time to time in other functions"""
         self.submission_ids = set()
-        for key, value in self.submission_data.items():
+        for _, value in self.submission_data.copy().items():
             self.submission_ids.add(value.id)
 
     def set_submission_count(self):
@@ -81,13 +84,13 @@ class JotForm(ABC):
     def get_submission_id_by_text(
         self, text: str, answer_text: str
     ) -> Union[int, None]:
-        for _, submission_object in self.submission_data.items():
+        for _, submission_object in self.submission_data.copy().items():
             if submission_object.get_answer_by_text(text)["answer"] == answer_text:
                 return submission_object
         return None
 
     def get_submission_by_case_id(self, case_id, tried=0):
-        for _, submission_object in self.submission_data.items():
+        for _, submission_object in self.submission_data.copy().items():
             if submission_object.case_id == case_id:
                 return submission_object
         if not tried:
@@ -262,7 +265,7 @@ class JotForm(ABC):
         Sorts the submission data by id
         """
         sorted_tuples = sorted(
-            self.submission_data.items(), key=lambda x: x[1].id, reverse=True
+            self.submission_data.copy().items(), key=lambda x: x[1].id, reverse=True
         )
         sorted_dict = {k: v for k, v in sorted_tuples}
         self.submission_data = sorted_dict
@@ -313,7 +316,8 @@ class JotForm(ABC):
         this function is used when the submission is not in the submission data
         """
         query = quote(f"""{{"q221:matches:answer":"{case_id}"}}""")
-        url = f"https://api.jotform.com/form/{self.form_id}/submissions?apiKey={self.api_key}&filter={query}"
+        url = f"https://api.jotform.com/form/{self.form_id}/submissions"
+        url += f"?apiKey={self.api_key}&filter={query}"
         response = requests.get(url, timeout=self.timeout)
         if response.status_code != 200:
             return None
@@ -355,7 +359,7 @@ class JotForm(ABC):
                 now = datetime.now().timestamp()
                 its_been = now - self.update_timestamp
                 self._print(
-                    f"[INFO] Its been {int(its_been/60)} minutes since last update. Updating submission data..."
+                    f"[INFO] Update started. Last update was {int(its_been/60)} minutes ago."
                 )
                 self.set_data()
                 self.update_timestamp = now
@@ -367,7 +371,7 @@ class JotForm(ABC):
         email = email.lower()
         self.update()
         submissions = []
-        for _, submission in self.submission_data.items():
+        for _, submission in self.submission_data.copy().items():
             submission_object = self.get_submission(submission.id)
             email_objects = [i.lower() for i in submission_object.emails if i]
             if email in email_objects:
