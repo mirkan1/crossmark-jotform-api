@@ -304,6 +304,10 @@ class JotForm(ABC):
                 return self.set_data(try_again + 1)
             return None
 
+        except KeyError as e:
+            self._print(f"KeyError: {e}")
+            return None
+
     def set_global_data(self) -> None:
         self._sort_submission_data_by_id()
         self.__set_submission_ids()

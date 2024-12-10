@@ -1,4 +1,6 @@
 
+- 2024-12-10 v2.1.6:
+  * catching an error where the data returns as none form jotform side, need further investigation on this.
 - 2024-09-27 v2.1.5:
   * fixed a bug where iteration throwing runtime error on `get_list_of_questions` function
   * hidden some warnings related to not existing module description
