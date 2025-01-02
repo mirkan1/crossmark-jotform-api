@@ -1,4 +1,9 @@
 
+- 2024-12-10 v2.2.0:
+  * added api_key validation on the constructor of JotFormSubmission class
+  * added update_submission class method to update the submission of JotFormSubmission class
+  * refactored the code for better performance of the JotFormSubmission class
+  * peudo tests are added to the JotFormSubmission class
 - 2024-12-10 v2.1.6:
   * catching an error where the data returns as none form jotform side, need further investigation on this.
 - 2024-09-27 v2.1.5:

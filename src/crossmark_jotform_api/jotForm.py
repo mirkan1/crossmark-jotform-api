@@ -40,7 +40,7 @@ class JotForm(ABC):
     def __set_get_submission_data(self, submissions):
         submissions_dict = {}
         for i in submissions:
-            submissions_dict[i["id"]] = JotFormSubmission(i)
+            submissions_dict[i["id"]] = JotFormSubmission(i, self.api_key)
         return submissions_dict
 
     def get_submission_ids(self):
@@ -80,6 +80,9 @@ class JotForm(ABC):
 
     def get_submission(self, submission_id: Union[int, str]):
         return self.submission_data[submission_id]
+
+    def get_submissions(self):
+        return self.get_submission_data()
 
     def get_submission_id_by_text(
         self, text: str, answer_text: str
@@ -391,7 +394,8 @@ class JotFormSubmission(ABC):
         ABC (_type_): parent class
     """
 
-    def __init__(self, submission_object):
+    def __init__(self, submission_object, api_key):
+        self.api_key = api_key
         self.id = submission_object["id"]
         self.form_id = submission_object["form_id"]
         self.ip = submission_object["ip"]
@@ -459,18 +463,60 @@ class JotFormSubmission(ABC):
             if "timeFormat" in answer:
                 del answer["timeFormat"]
 
-    def set_answer(self, answer_id: str, answer_value: str) -> None:
+    def set_answer(self, answer_key: str, answer_value: str) -> None:
         """## sets answer value for the given answer id
 
         ### Args:
-            - `answer_id (str)`: order integer of the answer
+            - `answer_key (str)`: order integer of the answer
             - `answer_value (str)`: value you want to set for the answer
         """
 
         for i, answer in enumerate(self.answers_arr):
-            if answer["key"] == answer_id:
+            if answer["key"] == answer_key:
                 self.answers_arr[i]["answer"] = answer_value
-        self.answers[answer_id]["answer"] = answer_value
+        self.answers[answer_key]["answer"] = answer_value
+        self.update_submission(self.id, answer_key, answer_value, self.api_key)
+
+    def set_answer_by_text(self, answer_text: str, answer_value: str) -> None:
+        """## sets answer value for the given answer text
+
+        ### Args:
+            - `answer_text (str)`: answer_text of the answer
+            - `answer_value (str)`: value you want to set for the answer
+        """
+        for i, answer in enumerate(self.answers_arr):
+            if answer["text"] == answer_text:
+                self.answers_arr[i]["answer"] = answer_value
+        self.get_answer_by_text(answer_text)["answer"] = answer_value
+        answer_key = self.get_answer_by_text(answer_text)["key"]
+        self.update_submission(self.id, answer_key, answer_value, self.api_key)
+
+    @classmethod
+    def update_submission(cls, submission_id, key, value, api_key) -> None:
+        """
+        Triggers an update for a specific submission in JotForm.
+
+        This method sends a POST request to the JotForm API to update a specific field
+        in a submission with a given value.
+
+        Args:
+            submission_id (str): The ID of the submission to be updated.
+            key (str): The key of the field to be updated.
+            value (str): The new value to be set for the specified field.
+            api_key (str): The API key to authenticate the request.
+
+        Raises:
+            ConnectionError: If the request to the JotForm API fails due to a connection error.
+
+        Example:
+            self.trigger_submission_update("1234567890", "status", "active", "your_api_key")
+        """
+        query = f"submission[{key}]={value}"
+        url = f"https://api.jotform.com/submission/{submission_id}?apiKey={api_key}&{query}"
+        try:
+            requests.post(url, timeout=45)
+        except ConnectionError:
+            print(f"cannot trigger for {submission_id}")
 
     def get_answers(self) -> list:
         """## returns the answers array
