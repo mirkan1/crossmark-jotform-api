@@ -1,4 +1,11 @@
 
+- 2025-02-02 v2.3.0:
+  * enhanced underscore design for the private functions
+  * intruduced `get_missing_submission_id`
+  * intruduced `_fetch_new_submissions` function to get the submission if there are new submissions available
+  * intruduced `_fetch_updated_submissions` function to get the submission if there are updated submissions available `limit is always 1000`
+  * wrote some typings for the functions
+  * fixed error on `set_url_param` function and enhanced its docs
 - 2024-12-10 v2.2.0:
   * added api_key validation on the constructor of JotFormSubmission class
   * added update_submission class method to update the submission of JotFormSubmission class

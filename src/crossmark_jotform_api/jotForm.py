@@ -26,48 +26,53 @@ class JotForm(ABC):
         self.submission_data = {}
         self.updating_process = False
         self.submission_count = 0
-        self.submissions = lambda: [
-            i.to_dict() for k, i in self.submission_data.copy().items()
-        ]
         self.timeout = timeout
         self.debug = debug
-        self.set_data()
+        self.update()
 
     def _print(self, text):
         if self.debug:
             print(text)
 
-    def __set_get_submission_data(self, submissions):
+    def _set_get_submission_data(self, submissions: list) -> dict:
         submissions_dict = {}
         for i in submissions:
             submissions_dict[i["id"]] = JotFormSubmission(i, self.api_key)
         return submissions_dict
 
-    def get_submission_ids(self):
+    def get_submission_ids(self) -> set:
         return self.submission_ids
 
-    def __set_submission_ids(self):
+    def _set_submission_ids(self) -> None:
         """This function sets the submission memory. It is used for easier for loop for submissions.
         It is called in the constructor, and time to time in other functions"""
         self.submission_ids = set()
         for _, value in self.submission_data.copy().items():
             self.submission_ids.add(value.id)
 
-    def set_submission_count(self):
+    def _set_submission_count(self) -> None:
         self.submission_count = len(self.submission_ids)
 
-    def get_submission_data(self):
+    def get_submission_data(self) -> None:
         self.update()
         return self.submission_data
 
-    def get_submission_count(self):
+    def get_submission_count(self) -> None:
         return self.submission_count
 
-    def get_submission_answers(self, submission_id):
+    def get_submission_answers(self, submission_id: int) -> dict:
+        """## Returns the answers of the submission by given submission id
+
+        Args:
+            submission_id (int):
+
+        Returns:
+            dict: answers of the submission
+        """
         self.update()
         return self.submission_data[submission_id].answers
 
-    def get_submission_by_request(self, submission_id):
+    def get_submission_by_request(self, submission_id) -> Union[object, None]:
         url = (
             f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}"
         )
@@ -75,13 +80,12 @@ class JotForm(ABC):
         if response.status_code == 200:
             response = response.json()
             return response["content"]
-        else:
-            return None
+        return None
 
-    def get_submission(self, submission_id: Union[int, str]):
+    def get_submission(self, submission_id: Union[int, str]) -> object:
         return self.submission_data[submission_id]
 
-    def get_submissions(self):
+    def get_submissions(self) -> dict:
         return self.get_submission_data()
 
     def get_submission_id_by_text(
@@ -92,7 +96,9 @@ class JotForm(ABC):
                 return submission_object
         return None
 
-    def get_submission_by_case_id(self, case_id, tried=0):
+    def get_submission_by_case_id(
+        self, case_id: Union[int, str], tried: int = 0
+    ) -> Union[object, None]:
         for _, submission_object in self.submission_data.copy().items():
             if submission_object.case_id == case_id:
                 return submission_object
@@ -101,28 +107,28 @@ class JotForm(ABC):
             return self.get_submission_by_case_id(case_id, 1)
         return None
 
-    def get_answer_by_text(self, submission_id, text):
+    def get_answer_by_text(self, submission_id: Union[int, str], text: str) -> dict:
         try:
             return self.get_submission(submission_id).get_answer_by_text(text)
         except KeyError:
             self.update()
             return self.get_submission(submission_id).get_answer_by_text(text)
 
-    def get_answer_by_name(self, submission_id, name):
+    def get_answer_by_name(self, submission_id: Union[int, str], name: str) -> dict:
         try:
             return self.get_submission(submission_id).get_answer_by_name(name)
         except KeyError:
             self.update()
             return self.get_submission(submission_id).get_answer_by_name(name)
 
-    def get_answer_by_key(self, submission_id, key):
+    def get_answer_by_key(self, submission_id: Union[int, str], key: str) -> dict:
         try:
             return self.get_submission(submission_id).get_answer_by_key(key)
         except KeyError:
             self.update()
             return self.get_submission(submission_id).get_answer_by_key(key)
 
-    def get_submission_answers_by_question(self, submission_id):
+    def get_submission_answers_by_question(self, submission_id: Union[int, str]) -> dict:
         self.update()
         submission_answers = self.get_submission_answers(submission_id)
         submission_answers_by_question = {}
@@ -246,26 +252,41 @@ class JotForm(ABC):
             return True
         return False
 
-    def set_url_param(self, key: str, value: str) -> None:
-        """## This function sets the url parameter
+    def set_url_param(self, key: Union[str, int], value: Union[str, int]) -> None:
+        """Sets the URL parameter.
 
-        ### Args:
-            - `key (string)`: key to set into the url
-            - `value (string)`: value to set into the url
+        Available keys:
+            - `apiKey`: Your JotForm API key for authentication.\n
+            - `limit`: Specifies the maximum number of results to return.\n
+            - `offset`: Specifies the number of results to skip before starting to return results.\n
+            - `orderby`: Determines the field by which to sort the results.\n
+            - `filter`: Applies a filter to the results based on specified criteria.\n
+            - `search`: Searches for a specific term within the results.\n
+            - `sort`: Specifies the sort order of the results (e.g., ascending or descending).\n
+            - `fields`: Specifies which fields to include in the response.\n
+            - `id`: Filters results by a specific ID.\n
+            - `created_at`: Filters results based on their creation date.\n
+            - `updated_at`: Filters results based on their last updated date.
+
+        Args:
+            key (str): The key to set in the URL.
+            value (str): The value to set for the specified key.
         """
         value = str(value)
-        if key in self.url:
-            params = self.url.split("&")
+        base_url, params = self.url.split("?")
+        if key in params:
+            params = params.split("&")
             for i, param in enumerate(params):
                 if key in param:
                     params[i] = key + "=" + value
-            self.url = "&".join(params)
+            self.url = base_url + "?" + "&".join(params)
         else:
             self.url += "&" + key + "=" + value
 
-    def _sort_submission_data_by_id(self):
-        """
-        Sorts the submission data by id
+    def sort_submission_data_by_id(self):
+        """## Sorts the submission data by id
+            No need to sort since it is already sorted by the API
+            unless orderby is changed in the url for descending order
         """
         sorted_tuples = sorted(
             self.submission_data.copy().items(), key=lambda x: x[1].id, reverse=True
@@ -273,49 +294,97 @@ class JotForm(ABC):
         sorted_dict = {k: v for k, v in sorted_tuples}
         self.submission_data = sorted_dict
 
-    def set_data(self, try_again: int = 0) -> None:
-        """## This function sets the data from the Jotform API
+    def get_missing_submission_id(self) -> Union[int, None]:
+        all_submission_ids = set(self.get_submission_ids())
+        expected_submission_ids = set(range(1, self.submission_count + 1))
+        missing_ids = expected_submission_ids - all_submission_ids
+        if missing_ids:
+            return missing_ids.pop()
 
-        ### Args:
-            - `try_again (int, optional)`: if fails try again for x times. Defaults to 0.
+    def _fetch_new_submissions(self, count, attempt: int = 0, max_attempts: int = 5) -> bool:
+        """## It is already newest to oldest so we can request one query, and it should be enough
 
-        ### Returns:
-            - `None`: if fails
-            - `True`: if successful
+        Args:
+            count (_type_): Fresh count of the submissions
+            attempt (_type_, optional): Current number of attempts. Defaults to 0.
+            max_attempts (_type_, optional): Maximum number of attempts. Defaults to 5.
+
+        Returns:
+            bool: True if updates, False if not
         """
+        count = count - self.submission_count
+        if count <= 0:
+            return False
+        limit = 1000 if count > 1000 else count
+        self.set_url_param("limit", limit)
+        self.set_url_param("orderby", "id")
         try:
             response = requests.get(self.url, timeout=self.timeout)
-            response.raise_for_status()  # Raises HTTPError for bad responses (4xx and 5xx)
+            response.raise_for_status()
 
-            self.data = response.json()
-            count = self.data["resultSet"]["count"]
+            data = response.json()
             self.submission_data.update(
-                self.__set_get_submission_data(self.data["content"])
+                self._set_get_submission_data(data["content"])
             )
-            if count == self.data["resultSet"]["limit"]:
-                self.set_url_param("offset", self.data["resultSet"]["offset"] + count)
+            if limit >= 1000:
+                self.set_url_param("offset", data["resultSet"]["offset"] + limit)
                 sleep(0.33)
-                return self.set_data()
-
+                return self._fetch_new_submissions(count - limit, attempt)
             self.set_global_data()
             return True
 
         except RequestException as e:
             self._print(f"Request failed: {e}")
-            if try_again < 3:
-                sleep(1)
-                return self.set_data(try_again + 1)
-            return None
+            if attempt < max_attempts:
+                sleep(.666)
+                return self._fetch_new_submissions(count, attempt + 1)
 
         except KeyError as e:
             self._print(f"KeyError: {e}")
-            return None
+
+        return False
+
+    def _fetch_updated_submissions(self, attempt: int = 0, max_attempts: int = 5) -> bool:
+        """## This function gets the last updated data from the Jotform API.
+            Aim of this function is to get last 1000 submissions sorted by updated_at.
+            So that network traffic is less and we can get the most recent data.
+
+        Args:
+            attempt (_type_, optional): Current number of attempts. Defaults to 0.
+            max_attempts (_type_, optional): Maximum number of attempts. Defaults to 5.
+
+        Returns:
+            bool: True if updates, False if not
+        """
+        self.set_url_param("limit", "1000")
+        self.set_url_param("orderby", "updated_at")
+        self.set_url_param("offset", "0")
+        try:
+            response = requests.get(self.url, timeout=self.timeout)
+            response.raise_for_status()
+
+            data = response.json()
+            self.submission_data.update(
+                self._set_get_submission_data(data["content"])
+            )
+            self.set_global_data()
+            return True
+
+        except RequestException as e:
+            self._print(f"Request failed: {e}")
+            if attempt < max_attempts:
+                sleep(.666)
+                return self._fetch_updated_submissions(attempt + 1)
+
+        except KeyError as e:
+            self._print(f"KeyError: {e}")
+
+        return False
 
     def set_global_data(self) -> None:
-        self._sort_submission_data_by_id()
-        self.__set_submission_ids()
-        self.set_submission_count()
-        self.set_url_param("offset", "0")
+        self._set_submission_ids()
+        self._set_submission_count()
+        self._reset_url_params()
 
     def request_submission_by_case_id(self, case_id):
         """
@@ -331,8 +400,8 @@ class JotForm(ABC):
         _json = response.json()
         return _json
 
-    def set_new_submission(self, submission):
-        self.submission_data.update(self.__set_get_submission_data([submission]))
+    def set_new_submission(self, submission) -> None:
+        self.submission_data.update(self._set_get_submission_data([submission]))
         self.set_global_data()
 
     def get_form(self):
@@ -350,27 +419,52 @@ class JotForm(ABC):
         else:
             return None
 
-    def get_submissions_count(self):
+    def _fetch_submissions_count(self):
         form = self.get_form()
         if form:
             return int(form["content"]["count"])
         return 1
 
-    def update(self, force=False):
+    def update(self, force: bool = False) -> bool:
+        """ ## This function updates the data from the Jotform API
+            It will look for a change in the submission count,
+            updates the data accordingly unless force is True
+
+        Args:
+            force (bool, optional): If True, it will update all the submissions. Defaults to False.
+
+        Returns:
+            bool: True if updates, False if not
+        """
         if not self.updating_process:
             self.updating_process = True
-            count = self.get_submissions_count()
-            if count <= self.submission_count and not force:
-                self._print("[INFO] No new submissions.")
-            else:
-                now = datetime.now().timestamp()
-                its_been = now - self.update_timestamp
-                self._print(
-                    f"[INFO] Update started. Last update was {int(its_been/60)} minutes ago."
-                )
-                self.set_data()
+            now = datetime.now().timestamp()
+            its_been = now - self.update_timestamp
+            if its_been > 300 or force:
+                # been more than 5 minutes so only pull the 100 posibly recently updated submissions
                 self.update_timestamp = now
+                self._fetch_updated_submissions()
+            else:
+                count = self._fetch_submissions_count()
+                if count > self.submission_count:
+                    # only pull the new submissions if there is a change in the submission count
+                    self._fetch_new_submissions(count)
+                self._print("[INFO] No new submissions.")
+                return False
+            self._print(f"[INFO] Update process is completed.\
+                Last update was {int(its_been/60)} minutes ago.")
             self.updating_process = False
+            self._reset_url_params()
+            return True
+        self._print("[INFO] Update process is already running.")
+        self._reset_url_params()
+        return False
+
+    def _reset_url_params(self) -> None:
+        self.set_url_param("offset", "0")
+        self.set_url_param("limit", "1000")
+        self.set_url_param("offset", "0")
+        self.set_url_param("orderby", "id")
 
     def get_user_data_by_email(self, email):
         if not email:
@@ -387,6 +481,7 @@ class JotForm(ABC):
 
 
 class JotFormSubmission(ABC):
+    # TODO seperate this class into another file
     """Base class for JotFormSubmission.
     Takes a submission object and creates a submission object from it.
 
