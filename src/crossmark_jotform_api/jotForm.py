@@ -128,7 +128,9 @@ class JotForm(ABC):
             self.update()
             return self.get_submission(submission_id).get_answer_by_key(key)
 
-    def get_submission_answers_by_question(self, submission_id: Union[int, str]) -> dict:
+    def get_submission_answers_by_question(
+        self, submission_id: Union[int, str]
+    ) -> dict:
         self.update()
         submission_answers = self.get_submission_answers(submission_id)
         submission_answers_by_question = {}
@@ -285,8 +287,8 @@ class JotForm(ABC):
 
     def sort_submission_data_by_id(self):
         """## Sorts the submission data by id
-            No need to sort since it is already sorted by the API
-            unless orderby is changed in the url for descending order
+        No need to sort since it is already sorted by the API
+        unless orderby is changed in the url for descending order
         """
         sorted_tuples = sorted(
             self.submission_data.copy().items(), key=lambda x: x[1].id, reverse=True
@@ -301,7 +303,9 @@ class JotForm(ABC):
         if missing_ids:
             return missing_ids.pop()
 
-    def _fetch_new_submissions(self, count, attempt: int = 0, max_attempts: int = 5) -> bool:
+    def _fetch_new_submissions(
+        self, count, attempt: int = 0, max_attempts: int = 5
+    ) -> bool:
         """## It is already newest to oldest so we can request one query, and it should be enough
 
         Args:
@@ -323,9 +327,7 @@ class JotForm(ABC):
             response.raise_for_status()
 
             data = response.json()
-            self.submission_data.update(
-                self._set_get_submission_data(data["content"])
-            )
+            self.submission_data.update(self._set_get_submission_data(data["content"]))
             if limit >= 1000:
                 self.set_url_param("offset", data["resultSet"]["offset"] + limit)
                 sleep(0.33)
@@ -336,7 +338,7 @@ class JotForm(ABC):
         except RequestException as e:
             self._print(f"Request failed: {e}")
             if attempt < max_attempts:
-                sleep(.666)
+                sleep(0.666)
                 return self._fetch_new_submissions(count, attempt + 1)
 
         except KeyError as e:
@@ -344,7 +346,9 @@ class JotForm(ABC):
 
         return False
 
-    def _fetch_updated_submissions(self, attempt: int = 0, max_attempts: int = 5) -> bool:
+    def _fetch_updated_submissions(
+        self, attempt: int = 0, max_attempts: int = 5
+    ) -> bool:
         """## This function gets the last updated data from the Jotform API.
             Aim of this function is to get last 1000 submissions sorted by updated_at.
             So that network traffic is less and we can get the most recent data.
@@ -364,16 +368,14 @@ class JotForm(ABC):
             response.raise_for_status()
 
             data = response.json()
-            self.submission_data.update(
-                self._set_get_submission_data(data["content"])
-            )
+            self.submission_data.update(self._set_get_submission_data(data["content"]))
             self.set_global_data()
             return True
 
         except RequestException as e:
             self._print(f"Request failed: {e}")
             if attempt < max_attempts:
-                sleep(.666)
+                sleep(0.666)
                 return self._fetch_updated_submissions(attempt + 1)
 
         except KeyError as e:
@@ -426,7 +428,7 @@ class JotForm(ABC):
         return 1
 
     def update(self, force: bool = False) -> bool:
-        """ ## This function updates the data from the Jotform API
+        """## This function updates the data from the Jotform API
             It will look for a change in the submission count,
             updates the data accordingly unless force is True
 
@@ -446,18 +448,27 @@ class JotForm(ABC):
                 self._fetch_updated_submissions()
             else:
                 count = self._fetch_submissions_count()
+                # TODO
+                # enhance this part so that when a submission is deleted
+                # it will be updated properly
+                # right now it only updates when there is a new submission
+                # even if there is a deleted submission it only looking for the new ones
                 if count > self.submission_count:
                     # only pull the new submissions if there is a change in the submission count
                     self._fetch_new_submissions(count)
-                self._print("[INFO] No new submissions.")
-                return False
-            self._print(f"[INFO] Update process is completed.\
-                Last update was {int(its_been/60)} minutes ago.")
-            self.updating_process = False
+                else:
+                    self.updating_process = False
+                    self._print("[INFO] No new submissions.")
+                    return False
             self._reset_url_params()
+            self._print(
+                f"[INFO] Update process is completed.\
+                Last update was {int(its_been/60)} minutes ago."
+            )
+            self.updating_process = False
             return True
-        self._print("[INFO] Update process is already running.")
         self._reset_url_params()
+        self._print("[INFO] Update process is already running.")
         return False
 
     def _reset_url_params(self) -> None:

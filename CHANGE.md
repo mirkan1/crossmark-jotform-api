@@ -1,4 +1,7 @@
 
+- 2025-02-04 v2.3.1:
+  * fixed an error on `update`
+  * pylint indentation error fixed
 - 2025-02-02 v2.3.0:
   * enhanced underscore design for the private functions
   * intruduced `get_missing_submission_id`
