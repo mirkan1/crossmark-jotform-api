@@ -1,4 +1,7 @@
 
+- 2025-03-04 v2.3.2:
+  * fixed a deadly bug where it keeps fetching new submissions ieven if the content count is less than limit size
+  * pylint is run on the code
 - 2025-02-04 v2.3.1:
   * fixed an error on `update`
   * pylint indentation error fixed
