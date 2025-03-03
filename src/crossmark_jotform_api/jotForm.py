@@ -11,7 +11,8 @@ from requests.exceptions import RequestException
 
 
 class JotForm(ABC):
-    def __init__(self, api_key, form_id, timeout=45, debug=False):
+    debug = False
+    def __init__(self, api_key, form_id, timeout=45):
         self.update_timestamp = datetime.now().timestamp()
         self.api_key = api_key
         self.form_id = form_id
@@ -27,7 +28,6 @@ class JotForm(ABC):
         self.updating_process = False
         self.submission_count = 0
         self.timeout = timeout
-        self.debug = debug
         self.update()
 
     def _print(self, text):
@@ -645,30 +645,30 @@ class JotFormSubmission(ABC):
             }
         """
         for answer in self.answers_arr:
-            if answer["text"] and text and answer["text"].upper() == text.upper():
+            if answer["text"] and answer["text"].upper() == text.upper():
                 _answer = answer.copy()
                 if not answer["answer"]:
                     _answer["answer"] = None
                 return _answer
-        return {"answer": None}
+        raise ValueError(f"Answer with text '{text}' not found")
 
     def get_answer_by_name(self, name: str) -> dict:
         for answer in self.answers_arr:
-            if answer["name"] and name and answer["name"] == name:
+            if answer["name"] and answer["name"] == name:
                 _answer = answer.copy()
                 if not answer["answer"]:
                     _answer["answer"] = None
                 return _answer
-        return {"answer": None}
+        raise ValueError(f"Answer with name '{name}' not found")
 
     def get_answer_by_key(self, key: str) -> dict:
         for answer in self.answers_arr:
-            if answer["key"] and key and answer["key"] == key:
+            if answer["key"] and answer["key"] == key:
                 _answer = answer.copy()
                 if not answer["answer"]:
                     _answer["answer"] = None
                 return _answer
-        return {"answer": None}
+        raise ValueError(f"Answer with key '{key}' not found")
 
     def get_emails(self):
         """
