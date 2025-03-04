@@ -128,6 +128,9 @@ class JotForm(ABC):
             self.update()
             return self.get_submission(submission_id).get_answer_by_key(key)
 
+    def get_answer_by_id(self, submission_id: Union[int, str], key: str) -> dict:
+        return self.get_answer_by_key(submission_id, key)
+
     def get_submission_answers_by_question(self, submission_id: Union[int, str]) -> dict:
         self.update()
         submission_answers = self.get_submission_answers(submission_id)

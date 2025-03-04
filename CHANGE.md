@@ -1,4 +1,6 @@
 
+- 2025-03-04 v2.3.4:
+  * `get_answer_by_id` method is added to the JotFormSubmission class
 - 2025-03-04 v2.3.3:
   * Removed debug parameter from JotForm constructor and improve error handling in answer retrieval methods
 - 2025-03-04 v2.3.2:
