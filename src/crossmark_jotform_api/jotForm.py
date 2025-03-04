@@ -471,7 +471,6 @@ class JotForm(ABC):
     def _reset_url_params(self) -> None:
         self.set_url_param("offset", "0")
         self.set_url_param("limit", "1000")
-        self.set_url_param("offset", "0")
         self.set_url_param("orderby", "id")
 
     def get_user_data_by_email(self, email):

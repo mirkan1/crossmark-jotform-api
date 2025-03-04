@@ -1,4 +1,6 @@
 
+- 2025-03-04 v2.3.5:
+  * deleted a duplicated call on `_reset_url_params` function
 - 2025-03-04 v2.3.4:
   * `get_answer_by_id` method is added to the JotFormSubmission class
 - 2025-03-04 v2.3.3:
