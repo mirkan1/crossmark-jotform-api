@@ -1,6 +1,11 @@
 
+- 2025-03-08 v2.4.0:
+  * `get_submission_id_by_text` function call is deleted, instead `get_submission_by_text`, `get_submission_by_name`, and `get_submission_by_key` is implemented
+  * Better typings are added to the functions
+  * `case_id`, `store`, and `client` parameters are deleted from the JotFormSubmission class, now they have to be set via inheretance
+  * Docs are updated
 - 2025-03-04 v2.3.5:
-  * deleted a duplicated call on `_reset_url_params` function
+  * Deleted a duplicated call inside the `_reset_url_params` function
 - 2025-03-04 v2.3.4:
   * `get_answer_by_id` method is added to the JotFormSubmission class
 - 2025-03-04 v2.3.3:

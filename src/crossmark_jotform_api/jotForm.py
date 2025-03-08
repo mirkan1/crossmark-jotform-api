@@ -3,7 +3,7 @@
 # pylint: disable=C0115, C0116, C0103
 from abc import ABC
 from datetime import datetime
-from typing import Union, Dict
+from typing import Union, Dict, Optional
 from urllib.parse import quote
 from time import sleep
 import requests
@@ -53,11 +53,11 @@ class JotForm(ABC):
     def _set_submission_count(self) -> None:
         self.submission_count = len(self.submission_ids)
 
-    def get_submission_data(self) -> None:
+    def get_submission_data(self) -> dict:
         self.update()
         return self.submission_data
 
-    def get_submission_count(self) -> None:
+    def get_submission_count(self) -> int:
         return self.submission_count
 
     def get_submission_answers(self, submission_id: int) -> dict:
@@ -72,7 +72,15 @@ class JotForm(ABC):
         self.update()
         return self.submission_data[submission_id].answers
 
-    def get_submission_by_request(self, submission_id) -> Union[object, None]:
+    def get_submission_by_request(self, submission_id: Union[str, int]) -> Optional[object]:
+        """ ## This function gets the submission by request
+
+        Args:
+            submission_id (_type_): _description_
+
+        Returns:
+            Optional[object]: _description_
+        """
         url = (
             f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}"
         )
@@ -88,23 +96,76 @@ class JotForm(ABC):
     def get_submissions(self) -> dict:
         return self.get_submission_data()
 
-    def get_submission_id_by_text(
+    def get_submission_by_text(
         self, text: str, answer_text: str
-    ) -> Union[int, None]:
+    ) -> Optional[object]:
+        """ ## This function gets the submission by text and answer's text
+            {
+                "key": 1,
+                "name": "userName",
+                "answer": "John Doe",
+                "type": "control_textbox",
+                "text": "What is Your User Name",
+            }
+        Args:
+            text (str): _description_
+            answer_text (str): _description_
+
+        Returns:
+            Optional[object]: submission object if successful, None if not
+        """
         for _, submission_object in self.submission_data.copy().items():
-            if submission_object.get_answer_by_text(text)["answer"] == answer_text:
+            answer = submission_object.get_answer_by_text(text)
+            if answer and answer.get("key") == answer_text:
                 return submission_object
         return None
 
-    def get_submission_by_case_id(
-        self, case_id: Union[int, str], tried: int = 0
-    ) -> Union[object, None]:
+    def get_submission_by_name(
+        self, name: str, answer_name: str
+    ) -> Optional[object]:
+        """ ## This function gets the submission by name and answer's name
+            {
+                "key": 1,
+                "name": "userName",
+                "answer": "John Doe",
+                "type": "control_textbox",
+                "text": "What is Your User Name",
+            }
+        Args:
+            name (str): _description_
+            answer_name (str): _description_
+
+        Returns:
+            Optional[object]: submission object if successful, None if not
+        """
         for _, submission_object in self.submission_data.copy().items():
-            if submission_object.case_id == case_id:
+            answer = submission_object.get_answer_by_name(name)
+            if answer and answer.get("answer") == answer_name:
                 return submission_object
-        if not tried:
-            self.request_submission_by_case_id(case_id)
-            return self.get_submission_by_case_id(case_id, 1)
+        return None
+
+    def get_submission_by_key(
+        self, key: Union[str, int], answer_key: str
+    ) -> Optional[object]:
+        """ ## This function gets the submission by key and answer's key
+            {
+                "key": 1,
+                "name": "userName",
+                "answer": "John Doe",
+                "type": "control_textbox",
+                "text": "What is Your User Name",
+            }
+        Args:
+            key (Union[str, int]): _description_
+            answer_key (str): _description_
+
+        Returns:
+            Optional[object]: submission object if successful, None if not
+        """
+        for _, submission_object in self.submission_data.copy().items():
+            answer = submission_object.get_answer_by_key(key)
+            if answer and answer.get("key") == answer_key:
+                return submission_object
         return None
 
     def get_answer_by_text(self, submission_id: Union[int, str], text: str) -> dict:
@@ -286,7 +347,7 @@ class JotForm(ABC):
         else:
             self.url += "&" + key + "=" + value
 
-    def sort_submission_data_by_id(self):
+    def sort_submission_data_by_id(self) -> None:
         """## Sorts the submission data by id
             No need to sort since it is already sorted by the API
             unless orderby is changed in the url for descending order
@@ -297,7 +358,12 @@ class JotForm(ABC):
         sorted_dict = {k: v for k, v in sorted_tuples}
         self.submission_data = sorted_dict
 
-    def get_missing_submission_id(self) -> Union[int, None]:
+    def get_missing_submission_id(self) -> Optional[int]:
+        """ ## This function gets the missing submission id
+
+        Returns:
+            Optional[int]: return the missing submission id if there is any
+        """
         all_submission_ids = set(self.get_submission_ids())
         expected_submission_ids = set(range(1, self.submission_count + 1))
         missing_ids = expected_submission_ids - all_submission_ids
@@ -392,7 +458,7 @@ class JotForm(ABC):
         self._set_submission_count()
         self._reset_url_params()
 
-    def request_submission_by_case_id(self, case_id):
+    def request_submission_by_case_id(self, case_id) -> Optional[object]:
         """
         Requests the submission by case id
         this function is used when the submission is not in the submission data
@@ -410,13 +476,13 @@ class JotForm(ABC):
         self.submission_data.update(self._set_get_submission_data([submission]))
         self.set_global_data()
 
-    def get_form(self):
+    def get_form(self) -> Optional[object]:
         """
         Gets form data directly from Jotform so there is no data diffirence on this function.
         It is slow since we are requesting data from Jotform.
 
         Returns:
-            _type_: either JSON or None
+            Optional[object]: object if successful, None if not
         """
         url = f"https://api.jotform.com/form/{self.form_id}?apiKey={self.api_key}"
         response = requests.get(url, timeout=self.timeout)
@@ -473,7 +539,8 @@ class JotForm(ABC):
         self.set_url_param("limit", "1000")
         self.set_url_param("orderby", "id")
 
-    def get_user_data_by_email(self, email):
+    def get_user_data_by_email(self, email: str) -> Optional[object]:
+        """ ## This function gets the user data by email address"""
         if not email:
             return None
         email = email.lower()
@@ -510,13 +577,20 @@ class JotFormSubmission(ABC):
         self.answers = submission_object["answers"]
         self._clear_answers()
         self.answers_arr = self.set_answers(self.answers)
-        self.case_id = self.get_answer_by_text("CASE")["answer"]
-        self.store = self.get_answer_by_text("STORE")["answer"]
-        self.client = self.get_answer_by_text("CLIENT")["answer"]
         self.emails = self.get_emails()
 
     def set_answers(self, answers) -> list:
+        """ ## This function sets the answers array
+
+        Args:
+            answers (_type_): _description_
+
+        Returns:
+            list: _description_
+        """
         answers_arr = []
+        if answers is None:
+            return answers_arr
         for key, value in answers.items():
             name = None
             if "name" in value:
@@ -546,7 +620,7 @@ class JotFormSubmission(ABC):
         return answers_arr
 
     def _clear_answers(self) -> None:
-        """## process of getting rid of unnecessary keys in the answers dictionary"""
+        """Process of getting rid of unnecessary keys in the answers dictionary."""
         for _, answer in self.answers.items():
             if "maxValue" in answer:
                 del answer["maxValue"]
@@ -568,9 +642,9 @@ class JotFormSubmission(ABC):
     def set_answer(self, answer_key: str, answer_value: str) -> None:
         """## sets answer value for the given answer id
 
-        ### Args:
-            - `answer_key (str)`: order integer of the answer
-            - `answer_value (str)`: value you want to set for the answer
+        Args:
+            answer_key (str): order integer of the answer
+            answer_value (str): value you want to set for the answer
         """
 
         for i, answer in enumerate(self.answers_arr):
@@ -582,9 +656,9 @@ class JotFormSubmission(ABC):
     def set_answer_by_text(self, answer_text: str, answer_value: str) -> None:
         """## sets answer value for the given answer text
 
-        ### Args:
-            - `answer_text (str)`: answer_text of the answer
-            - `answer_value (str)`: value you want to set for the answer
+        Args:
+            answer_text (str): answer_text of the answer
+            answer_value (str): value you want to set for the answer
         """
         for i, answer in enumerate(self.answers_arr):
             if answer["text"] == answer_text:
@@ -621,10 +695,10 @@ class JotFormSubmission(ABC):
             print(f"cannot trigger for {submission_id}")
 
     def get_answers(self) -> list:
-        """## returns the answers array
+        """## This function gets the answers array
 
-        ### Returns:
-            - `list`: answers array
+        Returns:
+            list: answers array
         """
         return self.answers_arr
 
@@ -632,10 +706,10 @@ class JotFormSubmission(ABC):
         """## This function gets the answer by text
          Sensetive to the text, if the text is not exactly the same, it will return None
 
-        ### Args:
+        Args:
             - `text (str)`: text element to search for
 
-        ### Returns:
+        Returns:
             - `dict`: jotform return object
             {
                 "key": "key",
@@ -672,14 +746,12 @@ class JotFormSubmission(ABC):
                 return _answer
         raise ValueError(f"Answer with key '{key}' not found")
 
-    def get_emails(self):
-        """
-            Unsafe call, ideally this function should not even exists,
-                instead it periodically set itself after updates and always should be generic
+    def get_emails(self) -> list:
+        """ ## This function gets the emails from the answers array
+
         Returns:
-            _type_: emails array
+            list: _description_
         """
-        # unsafe method
         emails = []
         for answer in self.answers_arr:
             if "type" not in answer:
@@ -688,15 +760,22 @@ class JotFormSubmission(ABC):
                 emails.append(answer["answer"])
         return emails
 
-    def get_day_from_date(self, date):
-        # YYYY-MM-DD hh:mm:ss
+    def get_day_from_date(self, date) -> int:
+        """Given parameter is expected to be YYYY-MM-DD hh:mm:ss"""
         now = datetime.now()
         return (now - datetime.strptime(date, "%Y-%m-%d %H:%M:%S")).days
 
-    def get_store_number_from_store(self, store):
+    def get_store_number_from_store(self, store) -> str:
+        """If store is in the format of 'store | store_number', return store_number."""
         return store.split(" | ")[0]
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
+        """## This function returns the submission object as a dictionary,
+        recomendation use case is to inherit this function in your own to_dict call
+
+        Returns:
+            dict: _description_
+        """
         return {
             "id": self.id,
             "form_id": self.form_id,
@@ -707,10 +786,6 @@ class JotFormSubmission(ABC):
             "flag": self.flag,
             "notes": self.notes,
             "updated_at": self.updated_at,
-            "case_id": self.case_id,
-            "store": self.store,
-            "store_number": self.get_store_number_from_store(self.store),
-            "client": self.client,
             "emails": self.get_emails(),
         }
 
@@ -731,7 +806,8 @@ class JotFormSubmission(ABC):
 
         raise ValueError("Invalid date format")
 
-    def text_to_html(self, text):
+    def text_to_html(self, text) -> Optional[str]:
+        """Converts plain text to HTML format."""
         if not text:
             return None
         text = text.replace("\r\n", "<br>")  # Convert Windows-style line breaks
@@ -761,7 +837,19 @@ class JotFormSubmission(ABC):
         else:
             return email
 
-    def get_value(self, obj):
+    def get_value(self, obj: Union[str, dict]) -> Optional[str]:
+        """ ## This function gets the value from the object
+            When you call this it wont raise an error which makes it the safer version of ["answer"]
+            Example:
+            self.get_value(self.get_answer_by_text("CASE"))
+            self.get_answer_by_text("CASE")["answer"]
+
+        Args:
+            obj (Union[str, dict]): _description_
+
+        Returns:
+            Optional[str]: _description_
+        """
         if isinstance(obj, str):
             return obj.strip()
         elif isinstance(obj, dict):
