@@ -97,7 +97,7 @@ class JotForm(ABC):
         return self.get_submission_data()
 
     def get_submission_by_text(
-        self, text: str, answer_text: str
+        self, text: str, text_answer: str
     ) -> Optional[object]:
         """ ## This function gets the submission by text and answer's text
             {
@@ -109,19 +109,19 @@ class JotForm(ABC):
             }
         Args:
             text (str): _description_
-            answer_text (str): _description_
+            text_answer (str): _description_
 
         Returns:
             Optional[object]: submission object if successful, None if not
         """
         for _, submission_object in self.submission_data.copy().items():
             answer = submission_object.get_answer_by_text(text)
-            if answer and answer.get("key") == answer_text:
+            if answer and answer.get("answer") == text_answer:
                 return submission_object
         return None
 
     def get_submission_by_name(
-        self, name: str, answer_name: str
+        self, name: str, name_answer: str
     ) -> Optional[object]:
         """ ## This function gets the submission by name and answer's name
             {
@@ -133,19 +133,19 @@ class JotForm(ABC):
             }
         Args:
             name (str): _description_
-            answer_name (str): _description_
+            name_answer (str): _description_
 
         Returns:
             Optional[object]: submission object if successful, None if not
         """
         for _, submission_object in self.submission_data.copy().items():
             answer = submission_object.get_answer_by_name(name)
-            if answer and answer.get("answer") == answer_name:
+            if answer and answer.get("answer") == name_answer:
                 return submission_object
         return None
 
     def get_submission_by_key(
-        self, key: Union[str, int], answer_key: str
+        self, key: Union[str, int], key_answer: str
     ) -> Optional[object]:
         """ ## This function gets the submission by key and answer's key
             {
@@ -157,14 +157,14 @@ class JotForm(ABC):
             }
         Args:
             key (Union[str, int]): _description_
-            answer_key (str): _description_
+            key_answer (str): _description_
 
         Returns:
             Optional[object]: submission object if successful, None if not
         """
         for _, submission_object in self.submission_data.copy().items():
             answer = submission_object.get_answer_by_key(key)
-            if answer and answer.get("key") == answer_key:
+            if answer and answer.get("answer") == key_answer:
                 return submission_object
         return None
 

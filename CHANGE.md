@@ -1,4 +1,7 @@
 
+- 2025-03-10 v2.4.1:
+  * fixed bugs on `get_submission_by_name`, and `get_submission_by_key`
+  * enhanced the docs for `get_submission_by_text`
 - 2025-03-08 v2.4.0:
   * `get_submission_id_by_text` function call is deleted, instead `get_submission_by_text`, `get_submission_by_name`, and `get_submission_by_key` is implemented
   * Better typings are added to the functions
