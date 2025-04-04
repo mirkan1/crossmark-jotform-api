@@ -8,6 +8,7 @@ from urllib.parse import quote
 from time import sleep
 import requests
 from requests.exceptions import RequestException
+from json.decoder import JSONDecodeError
 
 
 class JotForm(ABC):
@@ -405,7 +406,7 @@ class JotForm(ABC):
             self.set_global_data()
             return True
 
-        except RequestException as e:
+        except (RequestException, JSONDecodeError) as e:
             self._print(f"Request failed: {e}")
             if attempt < max_attempts:
                 sleep(.666)
@@ -436,13 +437,14 @@ class JotForm(ABC):
             response.raise_for_status()
 
             data = response.json()
+
             self.submission_data.update(
                 self._set_get_submission_data(data["content"])
             )
             self.set_global_data()
             return True
 
-        except RequestException as e:
+        except (RequestException, JSONDecodeError) as e:
             self._print(f"Request failed: {e}")
             if attempt < max_attempts:
                 sleep(.666)
