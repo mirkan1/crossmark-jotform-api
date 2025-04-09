@@ -669,6 +669,33 @@ class JotFormSubmission(ABC):
         answer_key = self.get_answer_by_text(answer_text)["key"]
         self.update_submission(self.id, answer_key, answer_value, self.api_key)
 
+    def set_answer_by_name(self, answer_name: str, answer_value: str) -> None:
+        """## sets answer value for the given unique answer name
+
+        Args:
+            answer_name (str): answer_name of the answer
+            answer_value (str): value you want to set for the answer
+        """
+        for i, answer in enumerate(self.answers_arr):
+            if answer["name"] == answer_name:
+                self.answers_arr[i]["answer"] = answer_value
+        self.get_answer_by_name(answer_name)["answer"] = answer_value
+        answer_key = self.get_answer_by_name(answer_name)["key"]
+        self.update_submission(self.id, answer_key, answer_value, self.api_key)
+
+    def set_answer_by_key(self, answer_key: str, answer_value: str) -> None:
+        """## sets answer value for the given unique answer key
+
+        Args:
+            answer_key (str): answer_key of the answer
+            answer_value (str): value you want to set for the answer
+        """
+        for i, answer in enumerate(self.answers_arr):
+            if answer["key"] == answer_key:
+                self.answers_arr[i]["answer"] = answer_value
+        self.get_answer_by_key(answer_key)["answer"] = answer_value
+        self.update_submission(self.id, answer_key, answer_value, self.api_key)
+
     @classmethod
     def update_submission(cls, submission_id, key, value, api_key) -> None:
         """

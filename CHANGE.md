@@ -1,6 +1,9 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-04-09 v2.4.3:
+  - added `set_answer_by_name` function to set the answer by `name`
+  - added `get_answer_by_key` function to get the answer by `key` aka `id`
 - 2025-03-10 v2.4.2:
   - added JSONDecodeError catch on `_fetch_updated_submissions` and `_fetch_new_submissions` functions
 - 2025-03-10 v2.4.1:
