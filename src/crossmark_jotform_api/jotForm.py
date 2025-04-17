@@ -893,3 +893,56 @@ class JotFormSubmission(ABC):
                 return next(iter(obj.values()))
         else:
             return None
+
+    def tide_answer_for_list(self, answer: Union[list, dict]) -> str:        
+        """## This function converts the answer to a string, gives commas for each answer `,`
+        ### Output is like:
+            * Answer 1, Answer 2, Answer 3
+        Args:
+            answer (Union[list, dict]): _description_
+
+        Returns:
+            str: _description_
+        """
+        string = ""
+        if isinstance(answer, list):
+            for i, value in enumerate(answer):
+                if i == 0:
+                    string += f"{value.title()}"
+                else:
+                    string += f", {value.title()}"
+        elif isinstance(answer, dict):
+            for i, value in enumerate(answer.items()):
+                if i == 0:
+                    string += f"{value[1].title()}"
+                else:
+                    string += f", {value[1].title()}"
+        return string
+
+    def answer_for_html(self, answer: Union[list, dict]) -> str:
+        """## This function converts the answer to HTML format, gives breaks for each answer `<br>`
+        ### Output is like:
+            * Answer 1
+            * Answer 2
+            * Answer 3
+
+        Args:
+            answer (str or dict): answer to be converted to HTML
+
+        Returns:
+            str: HTML formatted string
+        """
+        html = ""
+        if isinstance(answer, list):
+            for i, value in enumerate(answer):
+                if i == 0:
+                    html += f"*{value.title()}"
+                else:
+                    html += f"<br>*{value.title()}"
+        elif isinstance(answer, dict):
+            for i, value in enumerate(answer.items()):
+                if i == 0:
+                    html += f"*{value[1].title()}"
+                else:
+                    html += f"<br>*{value[1].title()}"
+        return html

@@ -1,6 +1,9 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-04-18 v2.4.3:
+  - added `tide_answer_for_list` function to tide the answer for list and gives a comma separated string
+  - added `answer_for_html` function to tide the answer for html
 - 2025-04-09 v2.4.3:
   - added `set_answer_by_name` function to set the answer by `name`
   - added `get_answer_by_key` function to get the answer by `key` aka `id`
