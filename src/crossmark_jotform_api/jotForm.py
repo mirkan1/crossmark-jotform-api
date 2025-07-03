@@ -754,6 +754,8 @@ class JotFormSubmission(ABC):
                 _answer = answer.copy()
                 if not answer["answer"]:
                     _answer["answer"] = None
+                if isinstance(_answer["answer"], list) and len(_answer["answer"]) == 1:
+                    _answer["answer"] = _answer["answer"][0]
                 return _answer
         raise ValueError(f"Answer with text '{text}' not found")
 
@@ -763,6 +765,8 @@ class JotFormSubmission(ABC):
                 _answer = answer.copy()
                 if not answer["answer"]:
                     _answer["answer"] = None
+                if isinstance(_answer["answer"], list) and len(_answer["answer"]) == 1:
+                    _answer["answer"] = _answer["answer"][0]
                 return _answer
         raise ValueError(f"Answer with name '{name}' not found")
 
@@ -772,6 +776,8 @@ class JotFormSubmission(ABC):
                 _answer = answer.copy()
                 if not answer["answer"]:
                     _answer["answer"] = None
+                if isinstance(_answer["answer"], list) and len(_answer["answer"]) == 1:
+                    _answer["answer"] = _answer["answer"][0]
                 return _answer
         raise ValueError(f"Answer with key '{key}' not found")
 
