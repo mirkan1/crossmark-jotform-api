@@ -286,6 +286,37 @@ class JotForm(ABC):
                     data[f"submission[{q}]"] = answer
         return self.create_submission(data)
 
+    def update_submission_answers_batch(
+        self, submission_id: Union[int, str], answers: Dict[str, Union[int, str, list]]
+    ) -> bool:
+        """## This function updates multiple answers of the submission in a single batch request
+
+        ### Args:
+            - `submission_id (Union[int, str])`: Submission ID
+            - `answers (Dict[str, Union[int, str, list]])`: Dictionary of field_id to answer
+
+        ### Returns:
+            - `bool`: True if successful, False if not
+        """
+        data = {}
+        for field_id, answer in answers.items():
+            if isinstance(answer, list):
+                data[f"submission[{field_id}][]"] = answer
+            else:
+                data[f"submission[{field_id}]"] = answer
+        url = f"https://api.jotform.com/submission/{submission_id}"
+        response = requests.post(
+            url,
+            params={"apiKey": self.api_key},
+            data=data,
+            timeout=self.timeout,
+        )
+        if response.status_code == 200:
+            for field_id, answer in answers.items():
+                self.submission_data[submission_id].set_answer(field_id, answer)
+            return True
+        return False
+
     def update_submission_answer(
         self, submission_id: Union[int, str], field_id: str, answer: Union[int, str]
     ) -> bool:
