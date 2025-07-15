@@ -982,4 +982,10 @@ class JotFormSubmission(ABC):
                     html += f"*{value[1].title()}"
                 else:
                     html += f"<br>*{value[1].title()}"
+        elif isinstance(answer, str):
+            html = f"*{answer.title()}"
+        elif answer is None:
+            html = "*None"
+        else:
+            html = f"*{answer}"
         return html
