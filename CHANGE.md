@@ -1,9 +1,9 @@
 
 # JotFormSubmission Library Change Log
 
-- 2025-07-12 v2.4.6:
+- 2025-07-12 v2.4.7:
   - fixed `answer_for_html` function to handle cases where the answer is `None`
-- 2025-07-12 v2.4.5:
+- 2025-07-12 v2.4.6:
   - added `update_submission_answers_batch` function to perform batch updates of answers, reducing the number of requests sent to the server
 - 2025-07-03 v2.4.5:
   - added `get_answer_by_text` function to get the answer by `text`
