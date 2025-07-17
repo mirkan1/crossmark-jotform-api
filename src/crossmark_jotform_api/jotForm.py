@@ -201,12 +201,13 @@ class JotForm(ABC):
             submission_answers_by_question[answer["id"]] = answer["answer"]
         return submission_answers_by_question
 
-    def get_submission_answers_by_question_id(self, submission_id):
+    def get_submission_answers_by_question_id(self, submission_id) -> dict:
         self.update()
         submission_answers = self.get_submission_answers(submission_id)
         submission_answers_by_question_id = {}
         for answer in submission_answers:
             submission_answers_by_question_id[answer["id"]] = answer["answer"]
+        return submission_answers_by_question_id
 
     def get_list_of_questions(self):
         """## jotform endpoint of form/{id}/questions

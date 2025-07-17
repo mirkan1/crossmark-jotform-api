@@ -1,6 +1,8 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-07-12 v2.4.8:
+  - `get_submission_answers_by_question_id` now returns a dictionary with question IDs as keys and answers as values
 - 2025-07-12 v2.4.7:
   - improved error handling for HTTP 429 responses by adding a message: `self._print(f"Request failed: {http_err} (429 Too Many Requests). Retrying with backoff...")`
   - fixed `answer_for_html` function to handle cases where the answer is `None`
