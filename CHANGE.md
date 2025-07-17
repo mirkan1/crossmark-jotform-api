@@ -2,6 +2,7 @@
 # JotFormSubmission Library Change Log
 
 - 2025-07-12 v2.4.7:
+  - improved error handling for HTTP 429 responses by adding a message: `self._print(f"Request failed: {http_err} (429 Too Many Requests). Retrying with backoff...")`
   - fixed `answer_for_html` function to handle cases where the answer is `None`
 - 2025-07-12 v2.4.6:
   - added `update_submission_answers_batch` function to perform batch updates of answers, reducing the number of requests sent to the server

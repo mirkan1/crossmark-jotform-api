@@ -437,11 +437,19 @@ class JotForm(ABC):
             self.set_global_data()
             return True
 
+        except requests.exceptions.HTTPError as http_err:
+            if response.status_code == 429:
+                self._print(f"Request failed: {http_err} (429 Too Many Requests). Retrying with backoff...")
+                if attempt < max_attempts:
+                    sleep_time = 2 ** attempt
+                    sleep(sleep_time)
+                    return self._fetch_new_submissions(count + self.submission_count, attempt + 1)
+            self._print(f"Request failed: {http_err}")
         except (RequestException, JSONDecodeError) as e:
             self._print(f"Request failed: {e}")
             if attempt < max_attempts:
                 sleep(.666)
-                return self._fetch_new_submissions(count, attempt + 1)
+                return self._fetch_new_submissions(count + self.submission_count, attempt + 1)
 
         except KeyError as e:
             self._print(f"KeyError: {e}")
