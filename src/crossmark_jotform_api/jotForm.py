@@ -998,3 +998,22 @@ class JotFormSubmission(ABC):
         else:
             html = f"*{answer}"
         return html
+
+    def make_array(self, answer):
+        if isinstance(answer, dict) and "answer" in answer:
+            answer = answer["answer"]
+
+        if not answer:
+            return []
+
+        if isinstance(answer, list):
+            return answer
+        elif isinstance(answer, str):
+            if answer.strip() == "":
+                return []
+            elif "," in answer:
+                return [x.strip() for x in answer.split(",")]
+            else:
+                return [answer]
+        else:
+            return []
