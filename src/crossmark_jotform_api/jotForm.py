@@ -10,7 +10,7 @@ from time import sleep
 import requests
 from requests.exceptions import RequestException
 from json.decoder import JSONDecodeError
-from .utils import fix_key
+from .utils import fix_query_key
 
 
 class JotForm(ABC):
@@ -32,6 +32,15 @@ class JotForm(ABC):
         self.submission_count = 0
         self.timeout = timeout
         self.update()
+    
+    @classmethod
+    def build_url(cls, form_id: str, api_key: str) -> str:
+        return (
+            "https://api.jotform.com/form/"
+            + form_id
+            + "/submissions?limit=1000&apiKey="
+            + api_key
+        )
 
     def _print(self, text):
         if self.debug:
@@ -597,7 +606,8 @@ class JotForm(ABC):
                 submissions.append(submission_object)
         return submissions
 
-    def get_submission_data_by_query(self, filter_param) -> dict:
+    @classmethod
+    def get_submission_data_by_query(cls, filter_param: dict, api_key: str, form_id: str) -> dict:
         """
         Query submissions using JotForm API filter param as JSON string or plain string.
         Accepts either a dict (converted to JSON string) or a pre-formatted string.
@@ -607,34 +617,17 @@ class JotForm(ABC):
 
         if not filter_param:
             raise ValueError("filter_param must be a non-empty dict or string")
+        new_filter = {}
+        for k, v in filter_param.items():
+            fixed_key = fix_query_key(k)
+            new_filter[fixed_key] = v
+        filter_str = json.dumps(new_filter)
 
-        if isinstance(filter_param, dict):
-            # Only handle top-level keys (JotForm filter expects one key)
-            new_filter = {}
-            for k, v in filter_param.items():
-                fixed_key = fix_key(k)
-                new_filter[fixed_key] = v
-            filter_str = json.dumps(new_filter)
-        elif isinstance(filter_param, str):
-            # Try to parse and check key if possible
-            try:
-                filter_dict = json.loads(filter_param)
-                new_filter = {}
-                for k, v in filter_dict.items():
-                    fixed_key = fix_key(k)
-                    new_filter[fixed_key] = v
-                filter_str = json.dumps(new_filter)
-            except Exception:
-                # If not JSON, just use as-is
-                filter_str = filter_param
-        else:
-            raise ValueError("filter_param must be a dict or a string")
-
-        params = {"apiKey": self.api_key, "filter": filter_str}
-        response = requests.get(self.url, params=params)
+        params = {"filter": filter_str}
+        response = requests.get(cls.build_url(form_id, api_key), params=params, timeout=45)
         if response.status_code == 200:
             submissions = response.json().get("content", [])
-            return self._set_get_submission_data(submissions)
+            return cls._set_get_submission_data(submissions)
         else:
             print(f"JotForm API error: {response.status_code} - {response.text}")
         return {}
