@@ -1,6 +1,8 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-09-17 v2.5.1:
+  - fixed import statement for utils module in jotform_submission.py
 - 2025-09-17 v2.5.0:
   - added `get_submission_data_by_query` method to query submissions using a JotForm API filter parameter as a JSON string or dictionary, with key normalization and error handling
 - 2025-07-18 v2.4.9:
