@@ -1,6 +1,8 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-09-17 v2.5.3:
+  - added type hints to all methods in jotForm.py and jotform_submission.py for better code clarity and maintainability
 - 2025-09-17 v2.5.2:
   - enhanced error handling for `get_submission_data_by_query` method to manage invalid JSON inputs and HTTP errors gracefully
 - 2025-09-17 v2.5.1:

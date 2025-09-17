@@ -42,14 +42,15 @@ class JotForm(ABC):
             + api_key
         )
 
-    def _print(self, text):
+    def _print(self, text: str) -> None:
         if self.debug:
             print(text)
 
-    def _set_get_submission_data(self, submissions: list) -> dict:
+    @classmethod
+    def _set_get_submission_data(cls, submissions: list, api_key: str) -> dict:
         submissions_dict = {}
         for i in submissions:
-            submissions_dict[i["id"]] = JotFormSubmission(i, self.api_key)
+            submissions_dict[i["id"]] = JotFormSubmission(i, api_key)
         return submissions_dict
 
     def get_submission_ids(self) -> set:
@@ -437,7 +438,7 @@ class JotForm(ABC):
 
             data = response.json()
             self.submission_data.update(
-                self._set_get_submission_data(data["content"])
+                self._set_get_submission_data(data["content"], self.api_key)
             )
             if len(data["content"]) < limit:
                 self.set_global_data()
@@ -490,7 +491,7 @@ class JotForm(ABC):
             data = response.json()
 
             self.submission_data.update(
-                self._set_get_submission_data(data["content"])
+                self._set_get_submission_data(data["content"], self.api_key)
             )
             self.set_global_data()
             return True
@@ -526,7 +527,7 @@ class JotForm(ABC):
         return _json
 
     def set_new_submission(self, submission) -> None:
-        self.submission_data.update(self._set_get_submission_data([submission]))
+        self.submission_data.update(self._set_get_submission_data([submission], self.api_key))
         self.set_global_data()
 
     def get_form(self) -> Optional[object]:
@@ -607,7 +608,7 @@ class JotForm(ABC):
         return submissions
 
     @classmethod
-    def get_submission_data_by_query(cls, filter_param: dict, api_key: str, form_id: str) -> dict:
+    def get_submission_data_by_query(cls, filter_param, api_key, form_id) -> dict:
         """
         Query submissions using JotForm API filter param as JSON string or plain string.
         Accepts either a dict (converted to JSON string) or a pre-formatted string.
@@ -617,17 +618,32 @@ class JotForm(ABC):
 
         if not filter_param:
             raise ValueError("filter_param must be a non-empty dict or string")
-        new_filter = {}
-        for k, v in filter_param.items():
-            fixed_key = fix_query_key(k)
-            new_filter[fixed_key] = v
-        filter_str = json.dumps(new_filter)
+
+        if isinstance(filter_param, dict):
+            new_filter = {}
+            for k, v in filter_param.items():
+                fixed_key = fix_query_key(k)
+                new_filter[fixed_key] = v
+            filter_str = json.dumps(new_filter)
+        elif isinstance(filter_param, str):
+            try:
+                filter_dict = json.loads(filter_param)
+                new_filter = {}
+                for k, v in filter_dict.items():
+                    fixed_key = fix_query_key(k)
+                    new_filter[fixed_key] = v
+                filter_str = json.dumps(new_filter)
+            except Exception:
+                # If not JSON, just use as-is
+                filter_str = filter_param
+        else:
+            raise ValueError("filter_param must be a dict or a string")
 
         params = {"filter": filter_str}
         response = requests.get(cls.build_url(form_id, api_key), params=params, timeout=45)
         if response.status_code == 200:
             submissions = response.json().get("content", [])
-            return cls._set_get_submission_data(submissions)
+            return cls._set_get_submission_data(submissions, api_key)
         else:
             print(f"JotForm API error: {response.status_code} - {response.text}")
         return {}
