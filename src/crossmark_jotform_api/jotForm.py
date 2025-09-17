@@ -1,6 +1,7 @@
 """## [JOTFORM API DOCS](https://www.api.jotform.com)"""
 
 # pylint: disable=C0115, C0116, C0103
+import json
 from abc import ABC
 from datetime import datetime
 from typing import Union, Dict, Optional
@@ -9,6 +10,7 @@ from time import sleep
 import requests
 from requests.exceptions import RequestException
 from json.decoder import JSONDecodeError
+from utils import fix_key
 
 
 class JotForm(ABC):
@@ -594,6 +596,48 @@ class JotForm(ABC):
             if email in email_objects:
                 submissions.append(submission_object)
         return submissions
+
+    def get_submission_data_by_query(self, filter_param) -> dict:
+        """
+        Query submissions using JotForm API filter param as JSON string or plain string.
+        Accepts either a dict (converted to JSON string) or a pre-formatted string.
+        If dict: checks key format, adds 'q' if missing, logs about it, or throws error if only a number.
+        Example: '{"q3:matches":"Will VanSaders"}' or {"q3:matches": "Will VanSaders"}
+        """
+
+        if not filter_param:
+            raise ValueError("filter_param must be a non-empty dict or string")
+
+        if isinstance(filter_param, dict):
+            # Only handle top-level keys (JotForm filter expects one key)
+            new_filter = {}
+            for k, v in filter_param.items():
+                fixed_key = fix_key(k)
+                new_filter[fixed_key] = v
+            filter_str = json.dumps(new_filter)
+        elif isinstance(filter_param, str):
+            # Try to parse and check key if possible
+            try:
+                filter_dict = json.loads(filter_param)
+                new_filter = {}
+                for k, v in filter_dict.items():
+                    fixed_key = fix_key(k)
+                    new_filter[fixed_key] = v
+                filter_str = json.dumps(new_filter)
+            except Exception:
+                # If not JSON, just use as-is
+                filter_str = filter_param
+        else:
+            raise ValueError("filter_param must be a dict or a string")
+
+        params = {"apiKey": self.api_key, "filter": filter_str}
+        response = requests.get(self.url, params=params)
+        if response.status_code == 200:
+            submissions = response.json().get("content", [])
+            return self._set_get_submission_data(submissions)
+        else:
+            print(f"JotForm API error: {response.status_code} - {response.text}")
+        return {}
 
 
 class JotFormSubmission(ABC):

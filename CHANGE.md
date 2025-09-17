@@ -1,6 +1,8 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-09-17 v2.5.0:
+  - added `get_submission_data_by_query` method to query submissions using a JotForm API filter parameter as a JSON string or dictionary, with key normalization and error handling
 - 2025-07-18 v2.4.9:
   - `make_array` function is added to convert a string into an array
 - 2025-07-17 v2.4.8:
