@@ -10,7 +10,7 @@ from time import sleep
 import requests
 from requests.exceptions import RequestException
 from json.decoder import JSONDecodeError
-from utils import fix_key
+from .utils import fix_key
 
 
 class JotForm(ABC):
