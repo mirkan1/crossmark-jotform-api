@@ -47,10 +47,22 @@ class JotForm(ABC):
             print(text)
 
     @classmethod
-    def _set_get_submission_data(cls, submissions: list, api_key: str) -> dict:
-        submissions_dict = {}
-        for i in submissions:
-            submissions_dict[i["id"]] = JotFormSubmission(i, api_key)
+    def _set_get_submission_data(cls, submissions: list, api_key: str, include_deleted: bool = False) -> dict:
+        """Sets and gets submission data.
+
+        Args:
+            submissions (list): List of submissions.
+            api_key (str): API key for authentication.
+            include_deleted (bool, optional): Whether to include deleted submissions. Defaults to False.
+
+        Returns:
+            dict: Dictionary of submission data.
+        """
+        submissions_dict: dict[str, JotFormSubmission] = {}
+        for sub in submissions: # pyright: ignore[reportUnknownVariableType]
+            if sub["status"] == 'DELETED' and not include_deleted:
+                continue
+            submissions_dict[sub["id"]] = JotFormSubmission(sub, api_key)
         return submissions_dict
 
     def get_submission_ids(self) -> set:
