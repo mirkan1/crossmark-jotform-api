@@ -921,7 +921,6 @@ class JotFormSubmission(ABC):
             "form_id": self.form_id,
             "ip": self.ip,
             "created_at": self.get_day_from_date(self.created_at),
-            "status": self.get_answer_by_text("STATUS")["answer"],
             "new": self.new,
             "flag": self.flag,
             "notes": self.notes,

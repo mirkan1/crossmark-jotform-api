@@ -1,6 +1,8 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-10-03 v2.5.5:
+  - omited `STATUS`  field from to_dict method to aviod errors.
 - 2025-09-30 v2.5.4:
   - improved `_set_get_submission_data` method to correctly handle the `include_deleted` parameter, ensuring deleted submissions are included only when specified
 - 2025-09-17 v2.5.3:
