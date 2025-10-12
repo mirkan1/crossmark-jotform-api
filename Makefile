@@ -63,8 +63,13 @@ test-verbose: ## Run tests with maximum verbosity
 
 # CI/CD helpers
 ci-test: ## Run tests as they would run in CI
-	python -m pytest --cov=src/crossmark_jotform_api --cov-report=xml --cov-branch
+	$(PYTHON) -m pytest --cov=src/crossmark_jotform_api --cov-report=xml --cov-branch --cov-fail-under=50 tests/
 
-ci-coverage: ## Generate coverage report for CI
-	coverage run -m pytest
-	coverage xml
+ci-coverage: ## Generate coverage report for CI with minimum threshold
+	$(PYTHON) -m coverage run -m pytest tests/
+	$(PYTHON) -m coverage xml
+	$(PYTHON) -m coverage report --fail-under=50
+
+coverage-badge: ## Generate coverage badge (requires coverage-badge package)
+	@echo "To generate coverage badge, install: pip install coverage-badge"
+	@echo "Then run: coverage-badge -o coverage.svg"

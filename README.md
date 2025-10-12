@@ -7,9 +7,9 @@ Reason of this library is to provide a simple and easy-to-use interface for inte
 [![PyPI version](https://badge.fury.io/py/crossmark-jotform-api.svg)](https://badge.fury.io/py/crossmark-jotform-api)
 [![Python Version](https://img.shields.io/pypi/pyversions/crossmark-jotform-api.svg)](https://pypi.org/project/crossmark-jotform-api/)
 [![License](https://img.shields.io/pypi/l/crossmark-jotform-api.svg)](https://pypi.org/project/crossmark-jotform-api/)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/mirkan1/crossmark-jotform-api/actions)
+[![CI/CD Pipeline](https://github.com/mirkan1/crossmark-jotform-api/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/mirkan1/crossmark-jotform-api/actions/workflows/ci-cd.yml)
 [![Coverage Status](https://coveralls.io/repos/github/mirkan1/crossmark-jotform-api/badge.svg?branch=master)](https://coveralls.io/github/mirkan1/crossmark-jotform-api?branch=master)
-[![Documentation Status](https://readthedocs.org/projects/crossmark-jotform-api/badge/?version=latest)](https://crossmark-jotform-api.readthedocs.io/en/latest/?badge=latest)
+[![Tests](https://github.com/mirkan1/crossmark-jotform-api/actions/workflows/test-coverage.yml/badge.svg)](https://github.com/mirkan1/crossmark-jotform-api/actions/workflows/test-coverage.yml)
 
 ## 📊 Code Coverage
 
@@ -50,6 +50,31 @@ The project follows Coveralls' recommended setup for Python projects using:
 - GitHub Actions for CI
 - `coverage.py` to generate Cobertura XML reports  
 - Official Coveralls GitHub Action for uploads
+
+## 🚀 CI/CD Pipeline
+
+This project includes a comprehensive CI/CD pipeline that ensures code quality and reliability:
+
+### Automated Testing
+- **Multi-Python Version Testing**: Tests run on Python 3.8, 3.9, 3.10, 3.11, and 3.12
+- **Pull Request Validation**: All PRs are automatically tested before merging
+- **Coverage Threshold**: Minimum 50% test coverage required for CI to pass
+- **Quality Gates**: Tests must pass before deployment to PyPI
+
+### Coverage Reporting
+- **Dual Coverage Uploads**: Reports sent to both Coveralls and Codecov
+- **Branch Coverage**: Comprehensive branch coverage tracking
+- **HTML Reports**: Detailed coverage reports available as CI artifacts
+- **Coverage Badges**: Real-time coverage status in README
+
+### Deployment
+- **Automated PyPI Publishing**: Packages are automatically published to PyPI on master branch pushes
+- **Quality Assurance**: Only code that passes all tests and coverage thresholds gets deployed
+- **Trusted Publishing**: Uses PyPI's trusted publishing for secure deployments
+
+### Workflow Files
+- `.github/workflows/ci-cd.yml` - Main CI/CD pipeline with testing and publishing
+- `.github/workflows/test-coverage.yml` - Dedicated coverage reporting and artifact generation
 
 ## Examples
 
