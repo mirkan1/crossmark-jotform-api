@@ -11,6 +11,46 @@ Reason of this library is to provide a simple and easy-to-use interface for inte
 [![Coverage Status](https://coveralls.io/repos/github/mirkan1/crossmark-jotform-api/badge.svg?branch=master)](https://coveralls.io/github/mirkan1/crossmark-jotform-api?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/crossmark-jotform-api/badge/?version=latest)](https://crossmark-jotform-api.readthedocs.io/en/latest/?badge=latest)
 
+## 📊 Code Coverage
+
+This project maintains comprehensive test coverage to ensure code quality and reliability.
+
+- **Current Coverage**: ~51% and growing
+- **Testing Framework**: pytest with coverage.py
+- **Coverage Reports**: HTML, XML, and Terminal formats
+- **CI Integration**: Automated coverage reporting via GitHub Actions
+
+### Running Tests Locally
+
+```bash
+# Install development dependencies
+pip install -r dev_requirements.txt
+pip install -e .
+
+# Run tests with coverage
+./run_coverage.sh
+
+# Or manually:
+pytest --cov=src/crossmark_jotform_api --cov-report=term-missing --cov-report=html --cov-report=xml --cov-branch
+
+# View HTML coverage report
+open htmlcov/index.html
+```
+
+### Coverage Integration
+
+We use the officially recommended approach for Python coverage reporting:
+
+- **Local Development**: `coverage.py` with HTML reports
+- **CI/CD**: GitHub Actions with Coveralls integration
+- **Format**: Cobertura XML for maximum compatibility
+
+The project follows Coveralls' recommended setup for Python projects using:
+
+- GitHub Actions for CI
+- `coverage.py` to generate Cobertura XML reports  
+- Official Coveralls GitHub Action for uploads
+
 ## Examples
 
 ```python

@@ -2,3 +2,10 @@
 *.egg-info
 .env
 *.pyc
+
+# Coverage files
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.pytest_cache/

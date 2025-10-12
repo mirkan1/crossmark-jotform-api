@@ -1,5 +1,7 @@
 wheel
 pytest
+pytest-cov
+coverage[toml]
 build
 twine
 setuptools>=61.0
