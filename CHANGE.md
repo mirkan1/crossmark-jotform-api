@@ -1,6 +1,12 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-10-12 v2.5.6:
+  - added coverage configuration to pyproject.toml
+  - added Makefile targets for coverage and CI coverage checks
+  - added .env file for local development environment variables
+  - added .gitignore entries for coverage files
+  - added dev dependencies for coverage and pytest-cov
 - 2025-10-03 v2.5.5:
   - omited `STATUS`  field from to_dict method to aviod errors.
 - 2025-09-30 v2.5.4:
