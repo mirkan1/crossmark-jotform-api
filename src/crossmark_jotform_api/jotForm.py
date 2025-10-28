@@ -4,7 +4,7 @@
 import json
 from abc import ABC
 from datetime import datetime
-from typing import Union, Dict, Optional
+from typing import Union, Dict, Optional, List
 from urllib.parse import quote
 from time import sleep
 import requests
@@ -15,14 +15,15 @@ from .utils import fix_query_key
 
 class JotForm(ABC):
     """JotForm API client to fetch and manage form submissions.
-        Args:
-            api_key (str): JotForm API key used for authentication.
-            form_id (str): ID of the JotForm form.
-            timeout (int): Request timeout in seconds (default: 45).
+    Args:
+        api_key (str): JotForm API key used for authentication.
+        form_id (str): ID of the JotForm form.
+        timeout (int): Request timeout in seconds (default: 45).
 
-        This class provides methods to list, create, update, and delete submissions,
-        and to query submissions by various criteria.
+    This class provides methods to list, create, update, and delete submissions,
+    and to query submissions by various criteria.
     """
+
     debug: bool = False
     update_timestamp: float
     api_key: str
@@ -51,7 +52,7 @@ class JotForm(ABC):
         self.submission_count = 0
         self.timeout = timeout
         self.update()
-    
+
     @classmethod
     def build_url(cls, form_id: str, api_key: str) -> str:
         return (
@@ -66,11 +67,13 @@ class JotForm(ABC):
             print(text)
 
     @classmethod
-    def _set_get_submission_data(cls, submissions: list, api_key: str, include_deleted: bool = False) -> dict:
+    def _set_get_submission_data(
+        cls, submissions: List[dict], api_key: str, include_deleted: bool = False
+    ) -> dict:
         """Sets and gets submission data.
 
         Args:
-            submissions (list): List of submissions.
+            submissions (List[dict]): List of submissions.
             api_key (str): API key for authentication.
             include_deleted (bool, optional): Whether to include deleted submissions. Defaults to False.
 
@@ -78,8 +81,8 @@ class JotForm(ABC):
             dict: Dictionary of submission data.
         """
         submissions_dict: dict[str, JotFormSubmission] = {}
-        for sub in submissions: # pyright: ignore[reportUnknownVariableType]
-            if sub["status"] == 'DELETED' and not include_deleted:
+        for sub in submissions:  # pyright: ignore[reportUnknownVariableType]
+            if sub["status"] == "DELETED" and not include_deleted:
                 continue
             submissions_dict[sub["id"]] = JotFormSubmission(sub, api_key)
         return submissions_dict
@@ -116,8 +119,10 @@ class JotForm(ABC):
         self.update()
         return self.submission_data[submission_id].answers
 
-    def get_submission_by_request(self, submission_id: Union[str, int]) -> Optional[object]:
-        """ ## This function gets the submission by request
+    def get_submission_by_request(
+        self, submission_id: Union[str, int]
+    ) -> Optional[object]:
+        """## This function gets the submission by request
 
         Args:
             submission_id (_type_): _description_
@@ -140,10 +145,8 @@ class JotForm(ABC):
     def get_submissions(self) -> dict:
         return self.get_submission_data()
 
-    def get_submission_by_text(
-        self, text: str, text_answer: str
-    ) -> Optional[object]:
-        """ ## This function gets the submission by text and answer's text
+    def get_submission_by_text(self, text: str, text_answer: str) -> Optional[object]:
+        """## This function gets the submission by text and answer's text
             {
                 "key": 1,
                 "name": "userName",
@@ -164,10 +167,8 @@ class JotForm(ABC):
                 return submission_object
         return None
 
-    def get_submission_by_name(
-        self, name: str, name_answer: str
-    ) -> Optional[object]:
-        """ ## This function gets the submission by name and answer's name
+    def get_submission_by_name(self, name: str, name_answer: str) -> Optional[object]:
+        """## This function gets the submission by name and answer's name
             {
                 "key": 1,
                 "name": "userName",
@@ -191,7 +192,7 @@ class JotForm(ABC):
     def get_submission_by_key(
         self, key: Union[str, int], key_answer: str
     ) -> Optional[object]:
-        """ ## This function gets the submission by key and answer's key
+        """## This function gets the submission by key and answer's key
             {
                 "key": 1,
                 "name": "userName",
@@ -236,7 +237,9 @@ class JotForm(ABC):
     def get_answer_by_id(self, submission_id: Union[int, str], key: str) -> dict:
         return self.get_answer_by_key(submission_id, key)
 
-    def get_submission_answers_by_question(self, submission_id: Union[int, str]) -> dict:
+    def get_submission_answers_by_question(
+        self, submission_id: Union[int, str]
+    ) -> dict:
         self.update()
         submission_answers = self.get_submission_answers(submission_id)
         submission_answers_by_question = {}
@@ -425,8 +428,8 @@ class JotForm(ABC):
 
     def sort_submission_data_by_id(self) -> None:
         """## Sorts the submission data by id
-            No need to sort since it is already sorted by the API
-            unless orderby is changed in the url for descending order
+        No need to sort since it is already sorted by the API
+        unless orderby is changed in the url for descending order
         """
         sorted_tuples = sorted(
             self.submission_data.copy().items(), key=lambda x: x[1].id, reverse=True
@@ -435,7 +438,7 @@ class JotForm(ABC):
         self.submission_data = sorted_dict
 
     def get_missing_submission_id(self) -> Optional[int]:
-        """ ## This function gets the missing submission id
+        """## This function gets the missing submission id
 
         Returns:
             Optional[int]: return the missing submission id if there is any
@@ -446,7 +449,9 @@ class JotForm(ABC):
         if missing_ids:
             return missing_ids.pop()
 
-    def _fetch_new_submissions(self, count, attempt: int = 0, max_attempts: int = 5) -> bool:
+    def _fetch_new_submissions(
+        self, count, attempt: int = 0, max_attempts: int = 5
+    ) -> bool:
         """## It is already newest to oldest so we can request one query, and it should be enough
 
         Args:
@@ -483,24 +488,32 @@ class JotForm(ABC):
 
         except requests.exceptions.HTTPError as http_err:
             if response.status_code == 429:
-                self._print(f"Request failed: {http_err} (429 Too Many Requests). Retrying with backoff...")
+                self._print(
+                    f"Request failed: {http_err} (429 Too Many Requests). Retrying with backoff..."
+                )
                 if attempt < max_attempts:
-                    sleep_time = 2 ** attempt
+                    sleep_time = 2**attempt
                     sleep(sleep_time)
-                    return self._fetch_new_submissions(count + self.submission_count, attempt + 1)
+                    return self._fetch_new_submissions(
+                        count + self.submission_count, attempt + 1
+                    )
             self._print(f"Request failed: {http_err}")
         except (RequestException, JSONDecodeError) as e:
             self._print(f"Request failed: {e}")
             if attempt < max_attempts:
-                sleep(.666)
-                return self._fetch_new_submissions(count + self.submission_count, attempt + 1)
+                sleep(0.666)
+                return self._fetch_new_submissions(
+                    count + self.submission_count, attempt + 1
+                )
 
         except KeyError as e:
             self._print(f"KeyError: {e}")
 
         return False
 
-    def _fetch_updated_submissions(self, attempt: int = 0, max_attempts: int = 5) -> bool:
+    def _fetch_updated_submissions(
+        self, attempt: int = 0, max_attempts: int = 5
+    ) -> bool:
         """## This function gets the last updated data from the Jotform API.
             Aim of this function is to get last 1000 submissions sorted by updated_at.
             So that network traffic is less and we can get the most recent data.
@@ -530,7 +543,7 @@ class JotForm(ABC):
         except (RequestException, JSONDecodeError) as e:
             self._print(f"Request failed: {e}")
             if attempt < max_attempts:
-                sleep(.666)
+                sleep(0.666)
                 return self._fetch_updated_submissions(attempt + 1)
 
         except KeyError as e:
@@ -558,7 +571,9 @@ class JotForm(ABC):
         return _json
 
     def set_new_submission(self, submission) -> None:
-        self.submission_data.update(self._set_get_submission_data([submission], self.api_key))
+        self.submission_data.update(
+            self._set_get_submission_data([submission], self.api_key)
+        )
         self.set_global_data()
 
     def get_form(self) -> Optional[object]:
@@ -583,7 +598,7 @@ class JotForm(ABC):
         return 1
 
     def update(self, force: bool = False) -> bool:
-        """ ## This function updates the data from the Jotform API
+        """## This function updates the data from the Jotform API
             It will look for a change in the submission count,
             updates the data accordingly unless force is True
 
@@ -611,8 +626,10 @@ class JotForm(ABC):
                     self._print("[INFO] No new submissions.")
                     return False
             self._reset_url_params()
-            self._print(f"[INFO] Update process is completed.\
-                Last update was {int(its_been/60)} minutes ago.")
+            self._print(
+                f"[INFO] Update process is completed.\
+                Last update was {int(its_been/60)} minutes ago."
+            )
             self.updating_process = False
             return True
         self._reset_url_params()
@@ -625,7 +642,7 @@ class JotForm(ABC):
         self.set_url_param("orderby", "id")
 
     def get_user_data_by_email(self, email: str) -> Optional[object]:
-        """ ## This function gets the user data by email address"""
+        """## This function gets the user data by email address"""
         if not email:
             return None
         email = email.lower()
@@ -671,7 +688,9 @@ class JotForm(ABC):
             raise ValueError("filter_param must be a dict or a string")
 
         params = {"filter": filter_str}
-        response = requests.get(cls.build_url(form_id, api_key), params=params, timeout=45)
+        response = requests.get(
+            cls.build_url(form_id, api_key), params=params, timeout=45
+        )
         if response.status_code == 200:
             submissions = response.json().get("content", [])
             return cls._set_get_submission_data(submissions, api_key)
@@ -700,8 +719,8 @@ class JotFormSubmission(ABC):
     notes: str
     updated_at: str
     answers: dict
-    answers_arr: list
-    emails: list
+    answers_arr: List[Optional[str]]
+    emails: List[Optional[str]]
 
     def __init__(self, submission_object, api_key):
         self.api_key = api_key
@@ -719,14 +738,14 @@ class JotFormSubmission(ABC):
         self.answers_arr = self.set_answers(self.answers)
         self.emails = self.get_emails()
 
-    def set_answers(self, answers) -> list:
-        """ ## This function sets the answers array
+    def set_answers(self, answers) -> List[Optional[str]]:
+        """## This function sets the answers array
 
         Args:
             answers (_type_): _description_
 
         Returns:
-            list: _description_
+            List[Optional[str]]: _description_
         """
         answers_arr = []
         if answers is None:
@@ -919,13 +938,13 @@ class JotFormSubmission(ABC):
                 return _answer
         raise ValueError(f"Answer with key '{key}' not found")
 
-    def get_emails(self) -> list[Optional[str]]:
-        """ ## This function gets the emails from the answers array
+    def get_emails(self) -> List[Optional[str]]:
+        """## This function gets the emails from the answers array
 
         Returns:
-            list[Optional[str]]: list of emails (or None for missing answers)
+            List[Optional[str]]: list of emails (or None for missing answers)
         """
-        emails: list[Optional[str]] = []
+        emails: List[Optional[str]] = []
         for answer in self.answers_arr:
             if "type" not in answer:
                 continue
@@ -951,7 +970,9 @@ class JotFormSubmission(ABC):
                 parsed = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
                 return (datetime.now() - parsed).days
             except ValueError:
-                raise ValueError("Invalid date string format, expected '%Y-%m-%d %H:%M:%S'")
+                raise ValueError(
+                    "Invalid date string format, expected '%Y-%m-%d %H:%M:%S'"
+                )
 
         raise ValueError("Invalid date format")
 
@@ -959,7 +980,7 @@ class JotFormSubmission(ABC):
         """If store is in the format of 'store | store_number', return store_number."""
         return store.split(" | ")[0]
 
-    def to_dict(self) -> Dict[str, Union[str, int, bool, list[Optional[str]]]]:
+    def to_dict(self) -> Dict[str, Union[str, int, bool, List[Optional[str]]]]:
         """## This function returns the submission object as a dictionary,
         recomendation use case is to inherit this function in your own to_dict call
 
@@ -1027,7 +1048,7 @@ class JotFormSubmission(ABC):
             return email
 
     def get_value(self, obj: Union[str, dict]) -> Optional[str]:
-        """ ## This function gets the value from the object
+        """## This function gets the value from the object
             When you call this it wont raise an error which makes it the safer version of ["answer"]
             Example:
             self.get_value(self.get_answer_by_text("CASE"))
@@ -1054,7 +1075,7 @@ class JotFormSubmission(ABC):
         else:
             return None
 
-    def tide_answer_for_list(self, answer: Union[list, dict]) -> str:        
+    def tide_answer_for_list(self, answer: Union[list, dict]) -> str:
         """## This function converts the answer to a string, gives commas for each answer `,`
         ### Output is like:
             * Answer 1, Answer 2, Answer 3

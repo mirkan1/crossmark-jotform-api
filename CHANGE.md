@@ -1,6 +1,8 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-10-29 v2.5.9:
+  - typing changes for python 3.8 compatibility
 - 2025-10-29 v2.5.8:
   - fixed the return type hint of the `to_dict` method in the JotForm class to accurately reflect the dictionary structure
 - 2025-10-29 v2.5.7:
