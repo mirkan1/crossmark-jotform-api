@@ -1,6 +1,9 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-10-29 v2.5.7:
+  - added type hints to class attributes in jotForm.py for better code clarity and maintainability
+  - updated docstring for JotForm class to provide clearer usage instructions and parameter descriptions
 - 2025-10-12 v2.5.6:
   - added coverage configuration to pyproject.toml
   - added Makefile targets for coverage and CI coverage checks

@@ -14,7 +14,26 @@ from .utils import fix_query_key
 
 
 class JotForm(ABC):
-    debug = False
+    """JotForm API client to fetch and manage form submissions.
+        Args:
+            api_key (str): JotForm API key used for authentication.
+            form_id (str): ID of the JotForm form.
+            timeout (int): Request timeout in seconds (default: 45).
+
+        This class provides methods to list, create, update, and delete submissions,
+        and to query submissions by various criteria.
+    """
+    debug: bool = False
+    update_timestamp: float
+    api_key: str
+    form_id: str
+    url: str
+    submission_ids: set
+    submission_data: dict
+    updating_process: bool
+    submission_count: int
+    timeout: int
+
     def __init__(self, api_key, form_id, timeout=45):
         self.update_timestamp = datetime.now().timestamp()
         self.api_key = api_key
@@ -670,11 +689,23 @@ class JotFormSubmission(ABC):
         ABC (_type_): parent class
     """
 
+    id: str
+    form_id: str
+    api_key: str
+    created_at: str
+    status: str
+    new: bool
+    flag: bool
+    notes: str
+    updated_at: str
+    answers: dict
+    answers_arr: list
+    emails: list
+
     def __init__(self, submission_object, api_key):
         self.api_key = api_key
         self.id = submission_object["id"]
         self.form_id = submission_object["form_id"]
-        self.ip = submission_object["ip"]
         self.created_at = submission_object["created_at"]
         self.status = submission_object["status"]
         self.new = submission_object["new"]
@@ -919,7 +950,6 @@ class JotFormSubmission(ABC):
         return {
             "id": self.id,
             "form_id": self.form_id,
-            "ip": self.ip,
             "created_at": self.get_day_from_date(self.created_at),
             "new": self.new,
             "flag": self.flag,
