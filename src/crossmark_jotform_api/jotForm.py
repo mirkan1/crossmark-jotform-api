@@ -691,6 +691,7 @@ class JotFormSubmission(ABC):
 
     id: str
     form_id: str
+    ip: str
     api_key: str
     created_at: str
     status: str
@@ -706,6 +707,7 @@ class JotFormSubmission(ABC):
         self.api_key = api_key
         self.id = submission_object["id"]
         self.form_id = submission_object["form_id"]
+        self.ip = submission_object["ip"]
         self.created_at = submission_object["created_at"]
         self.status = submission_object["status"]
         self.new = submission_object["new"]
@@ -917,30 +919,47 @@ class JotFormSubmission(ABC):
                 return _answer
         raise ValueError(f"Answer with key '{key}' not found")
 
-    def get_emails(self) -> list:
+    def get_emails(self) -> list[Optional[str]]:
         """ ## This function gets the emails from the answers array
 
         Returns:
-            list: _description_
+            list[Optional[str]]: list of emails (or None for missing answers)
         """
-        emails = []
+        emails: list[Optional[str]] = []
         for answer in self.answers_arr:
             if "type" not in answer:
                 continue
             if answer["type"] == "control_email":
-                emails.append(answer["answer"])
+                # use .get to avoid KeyError and allow None values
+                emails.append(answer.get("answer"))
         return emails
 
-    def get_day_from_date(self, date) -> int:
-        """Given parameter is expected to be YYYY-MM-DD hh:mm:ss"""
-        now = datetime.now()
-        return (now - datetime.strptime(date, "%Y-%m-%d %H:%M:%S")).days
+    def get_day_from_date(self, date: Union[str, Dict[str, str], datetime]) -> int:
+        """Given parameter is expected to be YYYY-MM-DD hh:mm:ss or a dict with 'answer'/'datetime' or a datetime.
+
+        Returns the number of days between now and the given date.
+        """
+        if isinstance(date, dict):
+            date = date.get("answer") or date.get("datetime")
+
+        if isinstance(date, datetime):
+            delta = datetime.now() - date
+            return delta.days
+
+        if isinstance(date, str):
+            try:
+                parsed = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+                return (datetime.now() - parsed).days
+            except ValueError:
+                raise ValueError("Invalid date string format, expected '%Y-%m-%d %H:%M:%S'")
+
+        raise ValueError("Invalid date format")
 
     def get_store_number_from_store(self, store) -> str:
         """If store is in the format of 'store | store_number', return store_number."""
         return store.split(" | ")[0]
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Union[str, int, bool, list[Optional[str]]]]:
         """## This function returns the submission object as a dictionary,
         recomendation use case is to inherit this function in your own to_dict call
 
@@ -951,6 +970,7 @@ class JotFormSubmission(ABC):
             "id": self.id,
             "form_id": self.form_id,
             "created_at": self.get_day_from_date(self.created_at),
+            "ip": self.ip,
             "new": self.new,
             "flag": self.flag,
             "notes": self.notes,

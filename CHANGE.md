@@ -1,6 +1,8 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-10-29 v2.5.8:
+  - fixed the return type hint of the `to_dict` method in the JotForm class to accurately reflect the dictionary structure
 - 2025-10-29 v2.5.7:
   - added type hints to class attributes in jotForm.py for better code clarity and maintainability
   - updated docstring for JotForm class to provide clearer usage instructions and parameter descriptions
