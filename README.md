@@ -35,6 +35,10 @@ pytest --cov=src/crossmark_jotform_api --cov-report=term-missing --cov-report=ht
 
 # View HTML coverage report
 open htmlcov/index.html
+
+
+# Example command to run a specific unit test:
+/home/raq/crossmark-jotform-api && python3 -m unittest tests.test_jotform_unit.TestJotFormUnit.test_create_and_delete_submission -v
 ```
 
 ### Coverage Integration

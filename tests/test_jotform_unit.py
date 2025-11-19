@@ -75,6 +75,113 @@ class TestJotFormUnit(unittest.TestCase):
         self.assertIn("offset=200", jotform.url)
         self.assertNotIn("offset=100", jotform.url)
 
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("crossmark_jotform_api.jotForm.requests.delete")
+    def test_create_and_delete_submission(self, mock_delete, mock_get, mock_post):
+        """Test creating a submission and then deleting it using __delitem__"""
+        # Mock the initial update call
+        mock_get_response = Mock()
+        mock_get_response.status_code = 200
+        mock_get_response.json.return_value = {
+            "content": [],
+            "resultSet": {"offset": 0, "limit": 1000},
+        }
+        mock_get.return_value = mock_get_response
+
+        # Create JotForm instance
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=0):
+            jotform = JotForm(self.api_key, self.form_id)
+
+        # Mock the create submission response
+        submission_id = "999888777"
+        mock_post_response = Mock()
+        mock_post_response.status_code = 200
+        mock_post_response.json.return_value = {
+            "content": {"submissionID": submission_id}
+        }
+        mock_post.return_value = mock_post_response
+
+        # Mock the get submission by request response
+        new_submission = {
+            "id": submission_id,
+            "form_id": self.form_id,
+            "ip": "192.168.1.1",
+            "created_at": "2024-01-01 12:00:00",
+            "status": "ACTIVE",
+            "new": "1",
+            "flag": "0",
+            "notes": "Test submission",
+            "updated_at": "2024-01-01 12:00:00",
+            "answers": {
+                "1": {
+                    "name": "testField",
+                    "answer": "test value",
+                    "text": "Test Field",
+                    "type": "control_textbox",
+                }
+            },
+        }
+
+        mock_get_submission_response = Mock()
+        mock_get_submission_response.status_code = 200
+        mock_get_submission_response.json.return_value = {"content": new_submission}
+
+        # Update mock_get to return different responses based on URL
+        def get_side_effect(url, *args, **kwargs):
+            if f"submission/{submission_id}" in url:
+                return mock_get_submission_response
+            return mock_get_response
+
+        mock_get.side_effect = get_side_effect
+
+        # Create submission
+        submission_data = {"submission[1]": "test value"}
+        result_id = jotform.create_submission(submission_data)
+
+        # Verify submission was created
+        self.assertEqual(result_id, submission_id)
+        self.assertIn(submission_id, jotform.submission_data)
+        initial_count = len(jotform.submission_data)
+
+        # Mock the delete response
+        mock_delete_response = Mock()
+        mock_delete_response.status_code = 200
+        mock_delete.return_value = mock_delete_response
+
+        # Delete submission using __delitem__
+        del jotform[submission_id]
+
+        # Verify submission was deleted
+        self.assertNotIn(submission_id, jotform.submission_data)
+        self.assertNotIn(submission_id, jotform.submission_ids)
+        self.assertEqual(len(jotform.submission_data), initial_count - 1)
+
+        # Verify the delete API was called
+        mock_delete.assert_called_once()
+        self.assertIn(f"submission/{submission_id}", mock_delete.call_args[0][0])
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("crossmark_jotform_api.jotForm.requests.delete")
+    def test_delitem_nonexistent_submission(self, mock_delete, mock_get):
+        """Test deleting a non-existent submission raises KeyError"""
+        # Mock the initial update call
+        mock_get_response = Mock()
+        mock_get_response.status_code = 200
+        mock_get_response.json.return_value = {
+            "content": [],
+            "resultSet": {"offset": 0, "limit": 1000},
+        }
+        mock_get.return_value = mock_get_response
+
+        # Create JotForm instance
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=0):
+            jotform = JotForm(self.api_key, self.form_id)
+
+        # Try to delete non-existent submission
+        with self.assertRaises(KeyError):
+            del jotform["nonexistent_id"]
+
 
 class TestJotFormSubmission(unittest.TestCase):
     """Unit tests for JotFormSubmission"""
@@ -193,6 +300,35 @@ class TestJotFormSubmission(unittest.TestCase):
         self.assertEqual(result["id"], "123456789")
         self.assertEqual(result["form_id"], "987654321")
         self.assertIn("emails", result)
+
+    def test_delitem_answer(self):
+        """Test deleting an answer using __delitem__"""
+        submission = JotFormSubmission(self.sample_submission, self.api_key)
+
+        # Verify answer exists before deletion
+        self.assertIn("1", submission.answers)
+        initial_answer_count = len(submission.answers)
+        initial_arr_count = len(submission.answers_arr)
+
+        # Delete the answer using __delitem__
+        del submission["1"]
+
+        # Verify answer was removed from both answers dict and answers_arr
+        self.assertNotIn("1", submission.answers)
+        self.assertEqual(len(submission.answers), initial_answer_count - 1)
+        self.assertEqual(len(submission.answers_arr), initial_arr_count - 1)
+
+        # Verify it's not in answers_arr
+        for answer in submission.answers_arr:
+            self.assertNotEqual(answer["key"], "1")
+
+    def test_delitem_nonexistent_answer(self):
+        """Test deleting a non-existent answer raises KeyError"""
+        submission = JotFormSubmission(self.sample_submission, self.api_key)
+
+        # Try to delete non-existent answer
+        with self.assertRaises(KeyError):
+            del submission["999"]
 
 
 if __name__ == "__main__":

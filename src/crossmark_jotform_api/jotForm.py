@@ -268,6 +268,29 @@ class JotForm(ABC):
             return response["content"]
         return None
 
+    def __delitem__(self, submission_id):
+        """Delete a submission using del operator.
+
+        Args:
+            submission_id: The submission ID to delete
+
+        Example:
+            del jotform_instance[submission_id]
+        """
+        if submission_id not in self.submission_data:
+            raise KeyError(f"Submission {submission_id} not found")
+
+        url = (
+            f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}"
+        )
+        response = requests.delete(url, timeout=self.timeout)
+        if response.status_code == 200:
+            del self.submission_data[submission_id]
+            self.submission_ids.discard(submission_id)
+            self._set_submission_count()
+        else:
+            raise RuntimeError(f"Failed to delete submission {submission_id}")
+
     def delete_submission(self, submission_id):
         url = (
             f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}"
@@ -937,6 +960,26 @@ class JotFormSubmission(ABC):
                     _answer["answer"] = _answer["answer"][0]
                 return _answer
         raise ValueError(f"Answer with key '{key}' not found")
+
+    def __delitem__(self, key: str):
+        """Delete an answer using del operator.
+
+        Args:
+            key: The answer key to delete
+        
+        Example:
+            del submission_instance[key]
+        """
+        if key not in self.answers:
+            raise KeyError(f"Answer with key '{key}' not found")
+
+        # Remove from answers dict
+        del self.answers[key]
+
+        # Remove from answers_arr
+        self.answers_arr = [
+            answer for answer in self.answers_arr if answer["key"] != key
+        ]
 
     def get_emails(self) -> List[Optional[str]]:
         """## This function gets the emails from the answers array
