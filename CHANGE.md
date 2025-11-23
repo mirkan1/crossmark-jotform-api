@@ -1,6 +1,8 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-10-29 v2.5.12:
+  - typings improvements for better code clarity
 - 2025-10-29 v2.5.9:
   - typing changes for python 3.8 compatibility
 - 2025-10-29 v2.5.8:

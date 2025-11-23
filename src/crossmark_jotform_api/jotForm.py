@@ -30,7 +30,7 @@ class JotForm(ABC):
     form_id: str
     url: str
     submission_ids: set
-    submission_data: dict
+    submission_data: Dict
     updating_process: bool
     submission_count: int
     timeout: int
@@ -68,19 +68,19 @@ class JotForm(ABC):
 
     @classmethod
     def _set_get_submission_data(
-        cls, submissions: List[dict], api_key: str, include_deleted: bool = False
-    ) -> dict:
+        cls, submissions: List[Dict], api_key: str, include_deleted: bool = False
+    ) -> Dict[str, Union[int, str, list]]:
         """Sets and gets submission data.
 
         Args:
-            submissions (List[dict]): List of submissions.
+            submissions (List[Dict]): List of submissions.
             api_key (str): API key for authentication.
             include_deleted (bool, optional): Whether to include deleted submissions. Defaults to False.
 
         Returns:
-            dict: Dictionary of submission data.
+            Dict: Dictionary of submission data.
         """
-        submissions_dict: dict[str, JotFormSubmission] = {}
+        submissions_dict: Dict[str, JotFormSubmission] = {}
         for sub in submissions:  # pyright: ignore[reportUnknownVariableType]
             if sub["status"] == "DELETED" and not include_deleted:
                 continue
@@ -100,21 +100,21 @@ class JotForm(ABC):
     def _set_submission_count(self) -> None:
         self.submission_count = len(self.submission_ids)
 
-    def get_submission_data(self) -> dict:
+    def get_submission_data(self) -> Dict[str, Union[int, str, list]]:
         self.update()
         return self.submission_data
 
     def get_submission_count(self) -> int:
         return self.submission_count
 
-    def get_submission_answers(self, submission_id: int) -> dict:
+    def get_submission_answers(self, submission_id: int) -> Dict[str, Union[int, str, list]]:
         """## Returns the answers of the submission by given submission id
 
         Args:
             submission_id (int):
 
         Returns:
-            dict: answers of the submission
+            Dict: answers of the submission
         """
         self.update()
         return self.submission_data[submission_id].answers
@@ -142,7 +142,7 @@ class JotForm(ABC):
     def get_submission(self, submission_id: Union[int, str]) -> object:
         return self.submission_data[submission_id]
 
-    def get_submissions(self) -> dict:
+    def get_submissions(self) -> Dict[str, Union[int, str, list]]:
         return self.get_submission_data()
 
     def get_submission_by_text(self, text: str, text_answer: str) -> Optional[object]:
@@ -213,33 +213,33 @@ class JotForm(ABC):
                 return submission_object
         return None
 
-    def get_answer_by_text(self, submission_id: Union[int, str], text: str) -> dict:
+    def get_answer_by_text(self, submission_id: Union[int, str], text: str) -> Dict[str, Union[int, str, list]]:
         try:
             return self.get_submission(submission_id).get_answer_by_text(text)
         except KeyError:
             self.update()
             return self.get_submission(submission_id).get_answer_by_text(text)
 
-    def get_answer_by_name(self, submission_id: Union[int, str], name: str) -> dict:
+    def get_answer_by_name(self, submission_id: Union[int, str], name: str) -> Dict[str, Union[int, str, list]]:
         try:
             return self.get_submission(submission_id).get_answer_by_name(name)
         except KeyError:
             self.update()
             return self.get_submission(submission_id).get_answer_by_name(name)
 
-    def get_answer_by_key(self, submission_id: Union[int, str], key: str) -> dict:
+    def get_answer_by_key(self, submission_id: Union[int, str], key: str) -> Dict[str, Union[int, str, list]]:
         try:
             return self.get_submission(submission_id).get_answer_by_key(key)
         except KeyError:
             self.update()
             return self.get_submission(submission_id).get_answer_by_key(key)
 
-    def get_answer_by_id(self, submission_id: Union[int, str], key: str) -> dict:
+    def get_answer_by_id(self, submission_id: Union[int, str], key: str) -> Dict[str, Union[int, str, list]]:
         return self.get_answer_by_key(submission_id, key)
 
     def get_submission_answers_by_question(
         self, submission_id: Union[int, str]
-    ) -> dict:
+    ) -> Dict[str, Union[int, str, list]]:
         self.update()
         submission_answers = self.get_submission_answers(submission_id)
         submission_answers_by_question = {}
@@ -247,7 +247,7 @@ class JotForm(ABC):
             submission_answers_by_question[answer["id"]] = answer["answer"]
         return submission_answers_by_question
 
-    def get_submission_answers_by_question_id(self, submission_id) -> dict:
+    def get_submission_answers_by_question_id(self, submission_id) -> Dict[str, Union[int, str, list]]:
         self.update()
         submission_answers = self.get_submission_answers(submission_id)
         submission_answers_by_question_id = {}
@@ -473,7 +473,7 @@ class JotForm(ABC):
             return missing_ids.pop()
 
     def _fetch_new_submissions(
-        self, count, attempt: int = 0, max_attempts: int = 5
+        self, count: int, attempt: int = 0, max_attempts: int = 5
     ) -> bool:
         """## It is already newest to oldest so we can request one query, and it should be enough
 
@@ -679,11 +679,11 @@ class JotForm(ABC):
         return submissions
 
     @classmethod
-    def get_submission_data_by_query(cls, filter_param, api_key, form_id) -> dict:
+    def get_submission_data_by_query(cls, filter_param, api_key, form_id) -> Dict[str, Union[int, str, list]]:
         """
         Query submissions using JotForm API filter param as JSON string or plain string.
-        Accepts either a dict (converted to JSON string) or a pre-formatted string.
-        If dict: checks key format, adds 'q' if missing, logs about it, or throws error if only a number.
+        Accepts either a Dict (converted to JSON string) or a pre-formatted string.
+        If Dict: checks key format, adds 'q' if missing, logs about it, or throws error if only a number.
         Example: '{"q3:matches":"Will VanSaders"}' or {"q3:matches": "Will VanSaders"}
         """
 
@@ -741,7 +741,7 @@ class JotFormSubmission(ABC):
     flag: bool
     notes: str
     updated_at: str
-    answers: dict
+    answers: Dict
     answers_arr: List[Optional[str]]
     emails: List[Optional[str]]
 
@@ -903,7 +903,7 @@ class JotFormSubmission(ABC):
         except ConnectionError:
             print(f"cannot trigger for {submission_id}")
 
-    def get_answers(self) -> list:
+    def get_answers(self) -> List:
         """## This function gets the answers array
 
         Returns:
@@ -911,7 +911,7 @@ class JotFormSubmission(ABC):
         """
         return self.answers_arr
 
-    def get_answer_by_text(self, text: str) -> dict:
+    def get_answer_by_text(self, text: str) -> Dict[str, Union[int, str, list]]:
         """## This function gets the answer by text
          Sensetive to the text, if the text is not exactly the same, it will return None
 
@@ -919,7 +919,7 @@ class JotFormSubmission(ABC):
             - `text (str)`: text element to search for
 
         Returns:
-            - `dict`: jotform return object
+            - `Dict`: jotform return object
             {
                 "key": "key",
                 "name": "name",
@@ -939,7 +939,7 @@ class JotFormSubmission(ABC):
                 return _answer
         raise ValueError(f"Answer with text '{text}' not found")
 
-    def get_answer_by_name(self, name: str) -> dict:
+    def get_answer_by_name(self, name: str) -> Dict[str, Union[int, str, list]]:
         for answer in self.answers_arr:
             if answer["name"] and answer["name"] == name:
                 _answer = answer.copy()
@@ -950,9 +950,9 @@ class JotFormSubmission(ABC):
                 return _answer
         raise ValueError(f"Answer with name '{name}' not found")
 
-    def get_answer_by_key(self, key: str) -> dict:
+    def get_answer_by_key(self, key: Union[str, int]) -> Dict[str, Union[int, str, list]]:
         for answer in self.answers_arr:
-            if answer["key"] and answer["key"] == key:
+            if answer["key"] and answer["key"] == str(key):
                 _answer = answer.copy()
                 if not answer["answer"]:
                     _answer["answer"] = None
@@ -1028,7 +1028,7 @@ class JotFormSubmission(ABC):
         recomendation use case is to inherit this function in your own to_dict call
 
         Returns:
-            dict: _description_
+            Dict: _description_
         """
         return {
             "id": self.id,
@@ -1090,7 +1090,7 @@ class JotFormSubmission(ABC):
         else:
             return email
 
-    def get_value(self, obj: Union[str, dict]) -> Optional[str]:
+    def get_value(self, obj: Union[str, Dict]) -> Optional[str]:
         """## This function gets the value from the object
             When you call this it wont raise an error which makes it the safer version of ["answer"]
             Example:
@@ -1098,7 +1098,7 @@ class JotFormSubmission(ABC):
             self.get_answer_by_text("CASE")["answer"]
 
         Args:
-            obj (Union[str, dict]): _description_
+            obj (Union[str, Dict]): _description_
 
         Returns:
             Optional[str]: _description_
@@ -1118,12 +1118,12 @@ class JotFormSubmission(ABC):
         else:
             return None
 
-    def tide_answer_for_list(self, answer: Union[list, dict]) -> str:
+    def tide_answer_for_list(self, answer: Union[List, Dict]) -> str:
         """## This function converts the answer to a string, gives commas for each answer `,`
         ### Output is like:
             * Answer 1, Answer 2, Answer 3
         Args:
-            answer (Union[list, dict]): _description_
+            answer (Union[List, Dict]): _description_
 
         Returns:
             str: _description_
@@ -1143,7 +1143,7 @@ class JotFormSubmission(ABC):
                     string += f", {value[1].title()}"
         return string
 
-    def answer_for_html(self, answer: Union[list, dict]) -> str:
+    def answer_for_html(self, answer: Union[List, Dict]) -> str:
         """## This function converts the answer to HTML format, gives breaks for each answer `<br>`
         ### Output is like:
             * Answer 1
