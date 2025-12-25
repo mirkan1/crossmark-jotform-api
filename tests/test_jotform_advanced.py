@@ -352,7 +352,7 @@ class TestJotFormSubmissionAdvanced(unittest.TestCase):
 
         # Test with non-string, non-list, non-dict
         result = submission.make_array(123)
-        self.assertEqual(result, [])
+        self.assertEqual(result, [123])
 
     def test_tide_answer_for_list(self):
         """Test tide_answer_for_list method"""

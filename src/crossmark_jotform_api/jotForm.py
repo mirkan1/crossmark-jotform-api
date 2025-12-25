@@ -4,13 +4,15 @@
 import json
 from abc import ABC
 from datetime import datetime
-from typing import Union, Dict, Optional, List
+from typing import Union, Dict, Optional, List, Any
 from urllib.parse import quote
 from time import sleep
 import requests
 from requests.exceptions import RequestException
 from json.decoder import JSONDecodeError
 from .utils import fix_query_key
+from .jotFormSubmission import JotFormSubmission
+from .types import AnswerObject, AnswersDict, FormObject, JotformFormAPIResponse
 
 
 class JotForm(ABC):
@@ -29,13 +31,13 @@ class JotForm(ABC):
     api_key: str
     form_id: str
     url: str
-    submission_ids: set
-    submission_data: Dict
+    submission_ids: set[str]
+    submission_data: Dict[str, JotFormSubmission]
     updating_process: bool
     submission_count: int
     timeout: int
 
-    def __init__(self, api_key, form_id, timeout=45):
+    def __init__(self, api_key: str, form_id: str, timeout: int = 45):
         self.update_timestamp = datetime.now().timestamp()
         self.api_key = api_key
         self.form_id = form_id
@@ -68,12 +70,15 @@ class JotForm(ABC):
 
     @classmethod
     def _set_get_submission_data(
-        cls, submissions: List[Dict], api_key: str, include_deleted: bool = False
-    ) -> Dict[str, Union[int, str, list]]:
+        cls,
+        submissions: List[Dict[str, Any]],
+        api_key: str,
+        include_deleted: bool = False,
+    ) -> Dict[str, JotFormSubmission]:
         """Sets and gets submission data.
 
         Args:
-            submissions (List[Dict]): List of submissions.
+            submissions (List[Dict[str, Any]]): List of submissions.
             api_key (str): API key for authentication.
             include_deleted (bool, optional): Whether to include deleted submissions. Defaults to False.
 
@@ -81,13 +86,13 @@ class JotForm(ABC):
             Dict: Dictionary of submission data.
         """
         submissions_dict: Dict[str, JotFormSubmission] = {}
-        for sub in submissions:  # pyright: ignore[reportUnknownVariableType]
+        for sub in submissions:
             if sub["status"] == "DELETED" and not include_deleted:
                 continue
             submissions_dict[sub["id"]] = JotFormSubmission(sub, api_key)
         return submissions_dict
 
-    def get_submission_ids(self) -> set:
+    def get_submission_ids(self) -> set[str]:
         return self.submission_ids
 
     def _set_submission_ids(self) -> None:
@@ -100,24 +105,26 @@ class JotForm(ABC):
     def _set_submission_count(self) -> None:
         self.submission_count = len(self.submission_ids)
 
-    def get_submission_data(self) -> Dict[str, Union[int, str, list]]:
+    def get_submission_data(self) -> Dict[str, JotFormSubmission]:
         self.update()
         return self.submission_data
 
     def get_submission_count(self) -> int:
         return self.submission_count
 
-    def get_submission_answers(self, submission_id: int) -> Dict[str, Union[int, str, list]]:
+    def get_submission_answers(
+        self, submission_id: Union[int, str]
+    ) -> List[AnswerObject]:
         """## Returns the answers of the submission by given submission id
 
         Args:
-            submission_id (int):
+            submission_id (int or str):
 
         Returns:
             Dict: answers of the submission
         """
         self.update()
-        return self.submission_data[submission_id].answers
+        return self.submission_data[str(submission_id)].answers
 
     def get_submission_by_request(
         self, submission_id: Union[str, int]
@@ -139,10 +146,10 @@ class JotForm(ABC):
             return response["content"]
         return None
 
-    def get_submission(self, submission_id: Union[int, str]) -> object:
-        return self.submission_data[submission_id]
+    def get_submission(self, submission_id: Union[int, str]) -> JotFormSubmission:
+        return self.submission_data[str(submission_id)]
 
-    def get_submissions(self) -> Dict[str, Union[int, str, list]]:
+    def get_submissions(self) -> Dict[str, JotFormSubmission]:
         return self.get_submission_data()
 
     def get_submission_by_text(self, text: str, text_answer: str) -> Optional[object]:
@@ -162,8 +169,8 @@ class JotForm(ABC):
             Optional[object]: submission object if successful, None if not
         """
         for _, submission_object in self.submission_data.copy().items():
-            answer = submission_object.get_answer_by_text(text)
-            if answer and answer.get("answer") == text_answer:
+            answer: AnswerObject = submission_object.get_answer_by_text(text)
+            if answer == text_answer:
                 return submission_object
         return None
 
@@ -184,8 +191,8 @@ class JotForm(ABC):
             Optional[object]: submission object if successful, None if not
         """
         for _, submission_object in self.submission_data.copy().items():
-            answer = submission_object.get_answer_by_name(name)
-            if answer and answer.get("answer") == name_answer:
+            answer: AnswerObject = submission_object.get_answer_by_name(name)
+            if answer == name_answer:
                 return submission_object
         return None
 
@@ -209,50 +216,56 @@ class JotForm(ABC):
         """
         for _, submission_object in self.submission_data.copy().items():
             answer = submission_object.get_answer_by_key(key)
-            if answer and answer.get("answer") == key_answer:
+            if answer == key_answer:
                 return submission_object
         return None
 
-    def get_answer_by_text(self, submission_id: Union[int, str], text: str) -> Dict[str, Union[int, str, list]]:
+    def get_answer_by_text(
+        self, submission_id: Union[int, str], text: str
+    ) -> AnswerObject:
         try:
             return self.get_submission(submission_id).get_answer_by_text(text)
         except KeyError:
             self.update()
             return self.get_submission(submission_id).get_answer_by_text(text)
 
-    def get_answer_by_name(self, submission_id: Union[int, str], name: str) -> Dict[str, Union[int, str, list]]:
+    def get_answer_by_name(
+        self, submission_id: Union[int, str], name: str
+    ) -> AnswerObject:
         try:
             return self.get_submission(submission_id).get_answer_by_name(name)
         except KeyError:
             self.update()
             return self.get_submission(submission_id).get_answer_by_name(name)
 
-    def get_answer_by_key(self, submission_id: Union[int, str], key: str) -> Dict[str, Union[int, str, list]]:
+    def get_answer_by_key(
+        self, submission_id: Union[int, str], key: str
+    ) -> AnswerObject:
         try:
             return self.get_submission(submission_id).get_answer_by_key(key)
         except KeyError:
             self.update()
             return self.get_submission(submission_id).get_answer_by_key(key)
 
-    def get_answer_by_id(self, submission_id: Union[int, str], key: str) -> Dict[str, Union[int, str, list]]:
+    def get_answer_by_id(
+        self, submission_id: Union[int, str], key: str
+    ) -> AnswerObject:
         return self.get_answer_by_key(submission_id, key)
 
     def get_submission_answers_by_question(
         self, submission_id: Union[int, str]
-    ) -> Dict[str, Union[int, str, list]]:
-        self.update()
-        submission_answers = self.get_submission_answers(submission_id)
-        submission_answers_by_question = {}
-        for answer in submission_answers:
-            submission_answers_by_question[answer["id"]] = answer["answer"]
-        return submission_answers_by_question
+    ) -> AnswersDict:
+        return self.get_submission_answers_by_question_id(submission_id)
 
-    def get_submission_answers_by_question_id(self, submission_id) -> Dict[str, Union[int, str, list]]:
+    def get_submission_answers_by_question_id(
+        self, submission_id: Union[int, str]
+    ) -> AnswersDict:
         self.update()
         submission_answers = self.get_submission_answers(submission_id)
-        submission_answers_by_question_id = {}
+        submission_answers_by_question_id: AnswersDict = {}
         for answer in submission_answers:
-            submission_answers_by_question_id[answer["id"]] = answer["answer"]
+            if "id" in answer and "answer" in answer:
+                submission_answers_by_question_id[answer["id"]] = answer["answer"]
         return submission_answers_by_question_id
 
     def get_list_of_questions(self):
@@ -268,7 +281,7 @@ class JotForm(ABC):
             return response["content"]
         return None
 
-    def __delitem__(self, submission_id):
+    def __delitem__(self, submission_id: Union[int, str]):
         """Delete a submission using del operator.
 
         Args:
@@ -277,7 +290,7 @@ class JotForm(ABC):
         Example:
             del jotform_instance[submission_id]
         """
-        if submission_id not in self.submission_data:
+        if str(submission_id) not in self.submission_data:
             raise KeyError(f"Submission {submission_id} not found")
 
         url = (
@@ -291,7 +304,7 @@ class JotForm(ABC):
         else:
             raise RuntimeError(f"Failed to delete submission {submission_id}")
 
-    def delete_submission(self, submission_id):
+    def delete_submission(self, submission_id: Union[int, str]) -> bool:
         url = (
             f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}"
         )
@@ -301,7 +314,7 @@ class JotForm(ABC):
             return True
         return False
 
-    def create_submission(self, submission):
+    def create_submission(self, submission: Dict[str, Any]) -> Union[bool, str]:
         """## This function creates a submission in Jotform
         then sets the new submission to the submission data.
 
@@ -321,12 +334,15 @@ class JotForm(ABC):
         if response.status_code == 200:
             response = response.json()
             _id = response["content"]["submissionID"]
-            submission = self.get_submission_by_request(_id)
-            self.set_new_submission(submission)
-            return _id
+            submission_data = self.get_submission_by_request(_id)
+            if submission_data:
+                self.set_new_submission(submission_data)
+                return _id
         return False
 
-    def create_submission_using_another(self, submission_data, submission_to_copy):
+    def create_submission_using_another(
+        self, submission_data: Dict[str, Any], submission_to_copy: JotFormSubmission
+    ) -> Union[bool, str]:
         """## This function creates a submission in Jotform
         then sets the new submission to the submission data.
 
@@ -344,36 +360,43 @@ class JotForm(ABC):
         ### Returns:
             - `bool`: true if successful, false if not
         """
-        data = {}
+        data: Dict[str, Any] = {}
         questions = self.get_list_of_questions()
+        if not questions:
+            return False
         for q in questions:
             name = questions[q]["name"]
             if name in submission_data:
                 data[f"submission[{q}]"] = submission_data[name]
             else:
-                answer = submission_to_copy.get_answer_by_name(name)["answer"]
+                answer_obj = submission_to_copy.get_answer_by_name(name)
+                answer = (
+                    answer_obj["answer"]
+                    if "answer" in answer_obj
+                    else None
+                )
                 if answer:
                     data[f"submission[{q}]"] = answer
         return self.create_submission(data)
 
     def update_submission_answers_batch(
-        self, submission_id: Union[int, str], answers: Dict[str, Union[int, str, list]]
+        self, submission_id: Union[int, str], answers: AnswersDict
     ) -> bool:
         """## This function updates multiple answers of the submission in a single batch request
 
         ### Args:
             - `submission_id (Union[int, str])`: Submission ID
-            - `answers (Dict[str, Union[int, str, list]])`: Dictionary of field_id to answer
+            - `answers (AnswersDict)`: Dictionary of field_id to answer
 
         ### Returns:
             - `bool`: True if successful, False if not
         """
-        data = {}
-        for field_id, answer in answers.items():
-            if isinstance(answer, list):
-                data[f"submission[{field_id}][]"] = answer
+        data: Dict[str, Any] = {}
+        for answer_key, answer_value in answers.items():
+            if isinstance(answer_value, list):
+                data[f"submission[{answer_key}][]"] = answer_value
             else:
-                data[f"submission[{field_id}]"] = answer
+                data[f"submission[{answer_key}]"] = answer_value
         url = f"https://api.jotform.com/submission/{submission_id}"
         response = requests.post(
             url,
@@ -382,13 +405,15 @@ class JotForm(ABC):
             timeout=self.timeout,
         )
         if response.status_code == 200:
-            for field_id, answer in answers.items():
-                self.submission_data[submission_id].set_answer(field_id, answer)
+            for answer_key, answer_value in answers.items():
+                self.submission_data[str(submission_id)].set_answer(
+                    answer_key, answer_value
+                )
             return True
         return False
 
     def update_submission_answer(
-        self, submission_id: Union[int, str], field_id: str, answer: Union[int, str]
+        self, submission_id: Union[int, str], field_id: str, answer: AnswerObject
     ) -> bool:
         """## This function updates the answer of the submission
 
@@ -414,7 +439,7 @@ class JotForm(ABC):
             url += f"?apiKey={self.api_key}&{query}"
             response = requests.post(url, timeout=self.timeout)
         if response.status_code == 200:
-            self.submission_data[submission_id].set_answer(field_id, answer)
+            self.submission_data[str(submission_id)].set_answer(field_id, answer)
             return True
         return False
 
@@ -439,15 +464,16 @@ class JotForm(ABC):
             value (str): The value to set for the specified key.
         """
         value = str(value)
+        key_str = str(key)
         base_url, params = self.url.split("?")
-        if key in params:
+        if key_str in params:
             params = params.split("&")
             for i, param in enumerate(params):
-                if key in param:
-                    params[i] = key + "=" + value
+                if key_str in param:
+                    params[i] = key_str + "=" + value
             self.url = base_url + "?" + "&".join(params)
         else:
-            self.url += "&" + key + "=" + value
+            self.url += "&" + key_str + "=" + value
 
     def sort_submission_data_by_id(self) -> None:
         """## Sorts the submission data by id
@@ -466,7 +492,7 @@ class JotForm(ABC):
         Returns:
             Optional[int]: return the missing submission id if there is any
         """
-        all_submission_ids = set(self.get_submission_ids())
+        all_submission_ids = set(int(sid) for sid in self.get_submission_ids())
         expected_submission_ids = set(range(1, self.submission_count + 1))
         missing_ids = expected_submission_ids - all_submission_ids
         if missing_ids:
@@ -510,7 +536,7 @@ class JotForm(ABC):
             return True
 
         except requests.exceptions.HTTPError as http_err:
-            if response.status_code == 429:
+            if http_err.response is not None and http_err.response.status_code == 429:
                 self._print(
                     f"Request failed: {http_err} (429 Too Many Requests). Retrying with backoff..."
                 )
@@ -579,7 +605,7 @@ class JotForm(ABC):
         self._set_submission_count()
         self._reset_url_params()
 
-    def request_submission_by_case_id(self, case_id) -> Optional[object]:
+    def request_submission_by_case_id(self, case_id: str) -> Optional[object]:
         """
         Requests the submission by case id
         this function is used when the submission is not in the submission data
@@ -593,19 +619,19 @@ class JotForm(ABC):
         _json = response.json()
         return _json
 
-    def set_new_submission(self, submission) -> None:
+    def set_new_submission(self, submission: Dict[str, Any]) -> None:
         self.submission_data.update(
             self._set_get_submission_data([submission], self.api_key)
         )
         self.set_global_data()
 
-    def get_form(self) -> Optional[object]:
+    def get_form(self) -> Optional[JotformFormAPIResponse]:
         """
         Gets form data directly from Jotform so there is no data diffirence on this function.
         It is slow since we are requesting data from Jotform.
 
         Returns:
-            Optional[object]: object if successful, None if not
+            Optional[JotformFormAPIResponse]: object if successful, None if not
         """
         url = f"https://api.jotform.com/form/{self.form_id}?apiKey={self.api_key}"
         response = requests.get(url, timeout=self.timeout)
@@ -614,10 +640,11 @@ class JotForm(ABC):
         else:
             return None
 
-    def _fetch_submissions_count(self):
+    def _fetch_submissions_count(self) -> int:
         form = self.get_form()
         if form:
-            return int(form["content"]["count"])
+            content: FormObject = form.get("content", {})
+            return int(content.get("count", 0))
         return 1
 
     def update(self, force: bool = False) -> bool:
@@ -664,13 +691,18 @@ class JotForm(ABC):
         self.set_url_param("limit", "1000")
         self.set_url_param("orderby", "id")
 
-    def get_user_data_by_email(self, email: str) -> Optional[object]:
-        """## This function gets the user data by email address"""
+    def get_user_data_by_email(self, email: str) -> Optional[List[JotFormSubmission]]:
+        """
+        ## This function gets the user data by email address
+
+        Returns:
+            Optional[List[JotFormSubmission]]: List of submissions for the given email, or None if email is not provided.
+        """
         if not email:
             return None
         email = email.lower()
         self.update()
-        submissions = []
+        submissions: List[JotFormSubmission] = []
         for _, submission in self.submission_data.copy().items():
             submission_object = self.get_submission(submission.id)
             email_objects = [i.lower() for i in submission_object.emails if i]
@@ -679,7 +711,9 @@ class JotForm(ABC):
         return submissions
 
     @classmethod
-    def get_submission_data_by_query(cls, filter_param, api_key, form_id) -> Dict[str, Union[int, str, list]]:
+    def get_submission_data_by_query(
+        cls, filter_param: Union[Dict[str, Any], str], api_key: str, form_id: str
+    ) -> Dict[str, JotFormSubmission]:
         """
         Query submissions using JotForm API filter param as JSON string or plain string.
         Accepts either a Dict (converted to JSON string) or a pre-formatted string.
@@ -696,7 +730,9 @@ class JotForm(ABC):
                 fixed_key = fix_query_key(k)
                 new_filter[fixed_key] = v
             filter_str = json.dumps(new_filter)
-        elif isinstance(filter_param, str):
+        elif isinstance(filter_param, int):
+            raise ValueError("filter_param cannot be only a number")
+        else:
             try:
                 filter_dict = json.loads(filter_param)
                 new_filter = {}
@@ -707,8 +743,6 @@ class JotForm(ABC):
             except Exception:
                 # If not JSON, just use as-is
                 filter_str = filter_param
-        else:
-            raise ValueError("filter_param must be a dict or a string")
 
         params = {"filter": filter_str}
         response = requests.get(
@@ -720,478 +754,3 @@ class JotForm(ABC):
         else:
             print(f"JotForm API error: {response.status_code} - {response.text}")
         return {}
-
-
-class JotFormSubmission(ABC):
-    # TODO seperate this class into another file
-    """Base class for JotFormSubmission.
-    Takes a submission object and creates a submission object from it.
-
-    Args:
-        ABC (_type_): parent class
-    """
-
-    id: str
-    form_id: str
-    ip: str
-    api_key: str
-    created_at: str
-    status: str
-    new: bool
-    flag: bool
-    notes: str
-    updated_at: str
-    answers: Dict
-    answers_arr: List[Optional[str]]
-    emails: List[Optional[str]]
-
-    def __init__(self, submission_object, api_key):
-        self.api_key = api_key
-        self.id = submission_object["id"]
-        self.form_id = submission_object["form_id"]
-        self.ip = submission_object["ip"]
-        self.created_at = submission_object["created_at"]
-        self.status = submission_object["status"]
-        self.new = submission_object["new"]
-        self.flag = submission_object["flag"]
-        self.notes = submission_object["notes"]
-        self.updated_at = submission_object["updated_at"]
-        self.answers = submission_object["answers"]
-        self._clear_answers()
-        self.answers_arr = self.set_answers(self.answers)
-        self.emails = self.get_emails()
-
-    def set_answers(self, answers) -> List[Optional[str]]:
-        """## This function sets the answers array
-
-        Args:
-            answers (_type_): _description_
-
-        Returns:
-            List[Optional[str]]: _description_
-        """
-        answers_arr = []
-        if answers is None:
-            return answers_arr
-        for key, value in answers.items():
-            name = None
-            if "name" in value:
-                name = value["name"]
-            answer = None
-            if "answer" in value:
-                answer = value["answer"]
-            _type = None
-            if "type" in value:
-                _type = value["type"]
-            text = None
-            if "text" in value:
-                text = value["text"]
-            file = None
-            if "file" in value:
-                file = value["file"]
-            answers_arr.append(
-                {
-                    "key": key,
-                    "name": name,
-                    "answer": answer,
-                    "type": _type,
-                    "text": text,
-                    "file": file,
-                }
-            )
-        return answers_arr
-
-    def _clear_answers(self) -> None:
-        """Process of getting rid of unnecessary keys in the answers dictionary."""
-        for _, answer in self.answers.items():
-            if "maxValue" in answer:
-                del answer["maxValue"]
-            if "order" in answer:
-                del answer["order"]
-            if "selectedField" in answer:
-                del answer["selectedField"]
-            if "cfname" in answer:
-                del answer["cfname"]
-            if "static" in answer:
-                del answer["static"]
-            if "type" in answer and answer["type"] != "control_email":
-                del answer["type"]
-            if "sublabels" in answer:
-                del answer["sublabels"]
-            if "timeFormat" in answer:
-                del answer["timeFormat"]
-
-    def set_answer(self, answer_key: str, answer_value: str) -> None:
-        """## sets answer value for the given answer id
-
-        Args:
-            answer_key (str): order integer of the answer
-            answer_value (str): value you want to set for the answer
-        """
-
-        for i, answer in enumerate(self.answers_arr):
-            if answer["key"] == answer_key:
-                self.answers_arr[i]["answer"] = answer_value
-        self.answers[answer_key]["answer"] = answer_value
-        self.update_submission(self.id, answer_key, answer_value, self.api_key)
-
-    def set_answer_by_text(self, answer_text: str, answer_value: str) -> None:
-        """## sets answer value for the given answer text
-
-        Args:
-            answer_text (str): answer_text of the answer
-            answer_value (str): value you want to set for the answer
-        """
-        for i, answer in enumerate(self.answers_arr):
-            if answer["text"] == answer_text:
-                self.answers_arr[i]["answer"] = answer_value
-        self.get_answer_by_text(answer_text)["answer"] = answer_value
-        answer_key = self.get_answer_by_text(answer_text)["key"]
-        self.update_submission(self.id, answer_key, answer_value, self.api_key)
-
-    def set_answer_by_name(self, answer_name: str, answer_value: str) -> None:
-        """## sets answer value for the given unique answer name
-
-        Args:
-            answer_name (str): answer_name of the answer
-            answer_value (str): value you want to set for the answer
-        """
-        for i, answer in enumerate(self.answers_arr):
-            if answer["name"] == answer_name:
-                self.answers_arr[i]["answer"] = answer_value
-        self.get_answer_by_name(answer_name)["answer"] = answer_value
-        answer_key = self.get_answer_by_name(answer_name)["key"]
-        self.update_submission(self.id, answer_key, answer_value, self.api_key)
-
-    def set_answer_by_key(self, answer_key: str, answer_value: str) -> None:
-        """## sets answer value for the given unique answer key
-
-        Args:
-            answer_key (str): answer_key of the answer
-            answer_value (str): value you want to set for the answer
-        """
-        for i, answer in enumerate(self.answers_arr):
-            if answer["key"] == answer_key:
-                self.answers_arr[i]["answer"] = answer_value
-        self.get_answer_by_key(answer_key)["answer"] = answer_value
-        self.update_submission(self.id, answer_key, answer_value, self.api_key)
-
-    @classmethod
-    def update_submission(cls, submission_id, key, value, api_key) -> None:
-        """
-        Triggers an update for a specific submission in JotForm.
-
-        This method sends a POST request to the JotForm API to update a specific field
-        in a submission with a given value.
-
-        Args:
-            submission_id (str): The ID of the submission to be updated.
-            key (str): The key of the field to be updated.
-            value (str): The new value to be set for the specified field.
-            api_key (str): The API key to authenticate the request.
-
-        Raises:
-            ConnectionError: If the request to the JotForm API fails due to a connection error.
-
-        Example:
-            self.trigger_submission_update("1234567890", "status", "active", "your_api_key")
-        """
-        query = f"submission[{key}]={value}"
-        url = f"https://api.jotform.com/submission/{submission_id}?apiKey={api_key}&{query}"
-        try:
-            requests.post(url, timeout=45)
-        except ConnectionError:
-            print(f"cannot trigger for {submission_id}")
-
-    def get_answers(self) -> List:
-        """## This function gets the answers array
-
-        Returns:
-            list: answers array
-        """
-        return self.answers_arr
-
-    def get_answer_by_text(self, text: str) -> Dict[str, Union[int, str, list]]:
-        """## This function gets the answer by text
-         Sensetive to the text, if the text is not exactly the same, it will return None
-
-        Args:
-            - `text (str)`: text element to search for
-
-        Returns:
-            - `Dict`: jotform return object
-            {
-                "key": "key",
-                "name": "name",
-                "answer": "answer",
-                "type": "type",
-                "text": "text",
-                "file": "file"
-            }
-        """
-        for answer in self.answers_arr:
-            if answer["text"] and answer["text"].upper() == text.upper():
-                _answer = answer.copy()
-                if not answer["answer"]:
-                    _answer["answer"] = None
-                if isinstance(_answer["answer"], list) and len(_answer["answer"]) == 1:
-                    _answer["answer"] = _answer["answer"][0]
-                return _answer
-        raise ValueError(f"Answer with text '{text}' not found")
-
-    def get_answer_by_name(self, name: str) -> Dict[str, Union[int, str, list]]:
-        for answer in self.answers_arr:
-            if answer["name"] and answer["name"] == name:
-                _answer = answer.copy()
-                if not answer["answer"]:
-                    _answer["answer"] = None
-                if isinstance(_answer["answer"], list) and len(_answer["answer"]) == 1:
-                    _answer["answer"] = _answer["answer"][0]
-                return _answer
-        raise ValueError(f"Answer with name '{name}' not found")
-
-    def get_answer_by_key(self, key: Union[str, int]) -> Dict[str, Union[int, str, list]]:
-        for answer in self.answers_arr:
-            if answer["key"] and answer["key"] == str(key):
-                _answer = answer.copy()
-                if not answer["answer"]:
-                    _answer["answer"] = None
-                if isinstance(_answer["answer"], list) and len(_answer["answer"]) == 1:
-                    _answer["answer"] = _answer["answer"][0]
-                return _answer
-        raise ValueError(f"Answer with key '{key}' not found")
-
-    def __delitem__(self, key: str):
-        """Delete an answer using del operator.
-
-        Args:
-            key: The answer key to delete
-        
-        Example:
-            del submission_instance[key]
-        """
-        if key not in self.answers:
-            raise KeyError(f"Answer with key '{key}' not found")
-
-        # Remove from answers dict
-        del self.answers[key]
-
-        # Remove from answers_arr
-        self.answers_arr = [
-            answer for answer in self.answers_arr if answer["key"] != key
-        ]
-
-    def get_emails(self) -> List[Optional[str]]:
-        """## This function gets the emails from the answers array
-
-        Returns:
-            List[Optional[str]]: list of emails (or None for missing answers)
-        """
-        emails: List[Optional[str]] = []
-        for answer in self.answers_arr:
-            if "type" not in answer:
-                continue
-            if answer["type"] == "control_email":
-                # use .get to avoid KeyError and allow None values
-                emails.append(answer.get("answer"))
-        return emails
-
-    def get_day_from_date(self, date: Union[str, Dict[str, str], datetime]) -> int:
-        """Given parameter is expected to be YYYY-MM-DD hh:mm:ss or a dict with 'answer'/'datetime' or a datetime.
-
-        Returns the number of days between now and the given date.
-        """
-        if isinstance(date, dict):
-            date = date.get("answer") or date.get("datetime")
-
-        if isinstance(date, datetime):
-            delta = datetime.now() - date
-            return delta.days
-
-        if isinstance(date, str):
-            try:
-                parsed = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-                return (datetime.now() - parsed).days
-            except ValueError:
-                raise ValueError(
-                    "Invalid date string format, expected '%Y-%m-%d %H:%M:%S'"
-                )
-
-        raise ValueError("Invalid date format")
-
-    def get_store_number_from_store(self, store) -> str:
-        """If store is in the format of 'store | store_number', return store_number."""
-        return store.split(" | ")[0]
-
-    def to_dict(self) -> Dict[str, Union[str, int, bool, List[Optional[str]]]]:
-        """## This function returns the submission object as a dictionary,
-        recomendation use case is to inherit this function in your own to_dict call
-
-        Returns:
-            Dict: _description_
-        """
-        return {
-            "id": self.id,
-            "form_id": self.form_id,
-            "created_at": self.get_day_from_date(self.created_at),
-            "ip": self.ip,
-            "new": self.new,
-            "flag": self.flag,
-            "notes": self.notes,
-            "updated_at": self.updated_at,
-            "emails": self.get_emails(),
-        }
-
-    def turn_into_american_datetime_format(
-        self,
-        date: Union[str, Dict[str, str], datetime],
-        cur_frmt: str = "%Y-%m-%d %H:%M:%S",
-        end_frmt: str = "%m/%d/%Y %I:%M %p",
-    ) -> str:
-        if isinstance(date, dict):
-            date = date.get("answer") or date.get("datetime")
-
-        if isinstance(date, str):
-            date = datetime.strptime(date, cur_frmt)
-
-        if isinstance(date, datetime):
-            return date.strftime(end_frmt)
-
-        raise ValueError("Invalid date format")
-
-    def text_to_html(self, text) -> Optional[str]:
-        """Converts plain text to HTML format."""
-        if not text:
-            return None
-        text = text.replace("\r\n", "<br>")  # Convert Windows-style line breaks
-        text = text.replace("\n", "<br>")  # Convert Unix-style line breaks
-        text = text.replace("\r", "<br>")  # Convert Mac-style line breaks
-        paragraphs = text.split("<br><br>")  # Split the text into paragraphs
-
-        html = ""
-        for paragraph in paragraphs:
-            html += "<p>" + paragraph + "</p>"
-        return html
-
-    def split_domain_from_email(self, email: str):
-        """if @ in email, split and return the first part of the string
-
-        Args:
-            email (str): string with @ in it
-
-        Returns:
-            _type_: first half of an email address.
-            e.g: 'test' from 'test@test.com'
-        """
-        if not email:
-            return None
-        elif "@" in email:
-            return email.split("@")[0]
-        else:
-            return email
-
-    def get_value(self, obj: Union[str, Dict]) -> Optional[str]:
-        """## This function gets the value from the object
-            When you call this it wont raise an error which makes it the safer version of ["answer"]
-            Example:
-            self.get_value(self.get_answer_by_text("CASE"))
-            self.get_answer_by_text("CASE")["answer"]
-
-        Args:
-            obj (Union[str, Dict]): _description_
-
-        Returns:
-            Optional[str]: _description_
-        """
-        if isinstance(obj, str):
-            return obj.strip()
-        elif isinstance(obj, dict):
-            if "answer" in obj:
-                answer = obj["answer"]
-                if isinstance(answer, list):
-                    return answer[0]
-                return answer
-            elif len(obj) > 1:
-                return obj
-            elif len(obj) == 1:
-                return next(iter(obj.values()))
-        else:
-            return None
-
-    def tide_answer_for_list(self, answer: Union[List, Dict]) -> str:
-        """## This function converts the answer to a string, gives commas for each answer `,`
-        ### Output is like:
-            * Answer 1, Answer 2, Answer 3
-        Args:
-            answer (Union[List, Dict]): _description_
-
-        Returns:
-            str: _description_
-        """
-        string = ""
-        if isinstance(answer, list):
-            for i, value in enumerate(answer):
-                if i == 0:
-                    string += f"{value.title()}"
-                else:
-                    string += f", {value.title()}"
-        elif isinstance(answer, dict):
-            for i, value in enumerate(answer.items()):
-                if i == 0:
-                    string += f"{value[1].title()}"
-                else:
-                    string += f", {value[1].title()}"
-        return string
-
-    def answer_for_html(self, answer: Union[List, Dict]) -> str:
-        """## This function converts the answer to HTML format, gives breaks for each answer `<br>`
-        ### Output is like:
-            * Answer 1
-            * Answer 2
-            * Answer 3
-
-        Args:
-            answer (str or dict): answer to be converted to HTML
-
-        Returns:
-            str: HTML formatted string
-        """
-        html = ""
-        if isinstance(answer, list):
-            for i, value in enumerate(answer):
-                if i == 0:
-                    html += f"*{value.title()}"
-                else:
-                    html += f"<br>*{value.title()}"
-        elif isinstance(answer, dict):
-            for i, value in enumerate(answer.items()):
-                if i == 0:
-                    html += f"*{value[1].title()}"
-                else:
-                    html += f"<br>*{value[1].title()}"
-        elif isinstance(answer, str):
-            html = f"*{answer.title()}"
-        elif answer is None:
-            html = "*None"
-        else:
-            html = f"*{answer}"
-        return html
-
-    def make_array(self, answer):
-        if isinstance(answer, dict) and "answer" in answer:
-            answer = answer["answer"]
-
-        if not answer:
-            return []
-
-        if isinstance(answer, list):
-            return answer
-        elif isinstance(answer, str):
-            if answer.strip() == "":
-                return []
-            elif "," in answer:
-                return [x.strip() for x in answer.split(",")]
-            else:
-                return [answer]
-        else:
-            return []
