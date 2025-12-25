@@ -1,6 +1,8 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-12-25 v2.6.1:
+  - set changed to Set for python 3.8 compatibility
 - 2025-12-25 v2.6.0:
   - added `make_array` function to convert a string or single value into an array
   - enhanced error handling in `get_submission_data_by_query` method to raise a ValueError when `filter_param` is an integer

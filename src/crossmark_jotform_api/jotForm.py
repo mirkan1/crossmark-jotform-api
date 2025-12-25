@@ -4,7 +4,7 @@
 import json
 from abc import ABC
 from datetime import datetime
-from typing import Union, Dict, Optional, List, Any
+from typing import Union, Dict, Optional, List, Any, Set
 from urllib.parse import quote
 from time import sleep
 import requests
@@ -31,7 +31,7 @@ class JotForm(ABC):
     api_key: str
     form_id: str
     url: str
-    submission_ids: set[str]
+    submission_ids: Set[str]
     submission_data: Dict[str, JotFormSubmission]
     updating_process: bool
     submission_count: int
@@ -92,7 +92,7 @@ class JotForm(ABC):
             submissions_dict[sub["id"]] = JotFormSubmission(sub, api_key)
         return submissions_dict
 
-    def get_submission_ids(self) -> set[str]:
+    def get_submission_ids(self) -> Set[str]:
         return self.submission_ids
 
     def _set_submission_ids(self) -> None:
