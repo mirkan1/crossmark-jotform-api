@@ -1,7 +1,12 @@
+# pyright: reportUnknownArgumentType=false, reportUnusedImport=false, reportUnknownParameterType=false, reportMissingParameterType=false, reportTypedDictNotRequiredAccess=false, reportUnknownMemberType=false, reportArgumentType=false, reportPrivateUsage=false
 import unittest
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import (
+    Mock,
+    patch,
+    MagicMock,
+    call,
+)
 from datetime import datetime
-import json
 from crossmark_jotform_api.jotForm import JotForm, JotFormSubmission
 
 
@@ -411,6 +416,149 @@ class TestJotFormSubmissionAdvanced(unittest.TestCase):
         # Test with invalid input
         with self.assertRaises(ValueError):
             submission.turn_into_american_datetime_format(123)
+
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_set_answer_by_key(self, mock_post):
+        """Test setting answer by key"""
+        submission = JotFormSubmission(self.sample_submission, self.api_key)
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        submission.set_answer("1", "Jane Doe")
+
+        # Verify the answer was updated in answers_arr
+        updated_answer = submission.get_answer_by_key("1")
+        self.assertEqual(updated_answer["answer"], "Jane Doe")
+
+        # Verify the answer was updated in answers dict
+        self.assertEqual(submission.answers["1"]["answer"], "Jane Doe")
+
+        # Verify update_submission was called (via the post request)
+        mock_post.assert_called_once()
+
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_set_answer_by_text(self, mock_post):
+        """Test setting answer by text"""
+        submission = JotFormSubmission(self.sample_submission, self.api_key)
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        submission.set_answer_by_text("Full Name", "Jane Doe")
+
+        # Verify the answer was updated
+        updated_answer = submission.get_answer_by_text("Full Name")
+        self.assertEqual(updated_answer["answer"], "Jane Doe")
+
+        # Verify update_submission was called
+        mock_post.assert_called_once()
+
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_set_answer_by_name(self, mock_post):
+        """Test setting answer by name"""
+        submission = JotFormSubmission(self.sample_submission, self.api_key)
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        submission.set_answer_by_name("fullName", "Jane Doe")
+
+        # Verify the answer was updated
+        updated_answer = submission.get_answer_by_name("fullName")
+        self.assertEqual(updated_answer["answer"], "Jane Doe")
+
+        # Verify update_submission was called
+        mock_post.assert_called_once()
+
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_set_answer_with_list_value(self, mock_post):
+        """Test setting answer with a list value"""
+        submission = JotFormSubmission(self.sample_submission, self.api_key)
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        new_colors = ["yellow", "purple", "orange"]
+        submission.set_answer("3", new_colors)
+
+        # Verify the answer was updated
+        updated_answer = submission.get_answer_by_key("3")
+        self.assertEqual(updated_answer["answer"], new_colors)
+
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_set_answer_updates_both_storage_locations(self, mock_post):
+        """Test that set_answer updates both answers_arr and answers dict"""
+        submission = JotFormSubmission(self.sample_submission, self.api_key)
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        new_value = "test@example.com"
+        submission.set_answer("2", new_value)
+
+        # Check answers_arr
+        found_in_arr = False
+        for answer in submission.answers_arr:
+            if answer["key"] == "2":
+                self.assertEqual(answer["answer"], new_value)
+                found_in_arr = True
+                break
+        self.assertTrue(found_in_arr, "Answer not found in answers_arr")
+
+        # Check answers dict
+        self.assertEqual(submission.answers["2"]["answer"], new_value)
+
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_set_answer_by_text_case_insensitive(self, mock_post):
+        """Test that set_answer_by_text works with case variations"""
+        submission = JotFormSubmission(self.sample_submission, self.api_key)
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        submission.set_answer_by_text("FULL NAME", "Test User")
+
+        # Verify the answer was updated
+        updated_answer = submission.get_answer_by_text("full name")
+        self.assertEqual(updated_answer["answer"], "Test User")
+
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_set_answer_nonexistent_key(self, mock_post):
+        """Test setting answer with non-existent key raises error"""
+        submission = JotFormSubmission(self.sample_submission, self.api_key)
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        with self.assertRaises(KeyError):
+            submission.set_answer("999", "test_value")
+
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_set_answer_by_text_nonexistent(self, mock_post):
+        """Test setting answer by non-existent text raises error"""
+        submission = JotFormSubmission(self.sample_submission, self.api_key)
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        with self.assertRaises(ValueError) as context:
+            submission.set_answer_by_text("Non-existent Field", "test_value")
+
+        self.assertIn("not found", str(context.exception))
+
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_set_answer_by_name_nonexistent(self, mock_post):
+        """Test setting answer by non-existent name raises error"""
+        submission = JotFormSubmission(self.sample_submission, self.api_key)
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        with self.assertRaises(ValueError) as context:
+            submission.set_answer_by_name("nonExistentField", "test_value")
+
+        self.assertIn("not found", str(context.exception))
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+# pyright: reportUnknownArgumentType=false, reportUnusedImport=false, reportUnknownParameterType=false, reportMissingParameterType=false, reportTypedDictNotRequiredAccess=false, reportUnknownMemberType=false, reportArgumentType=false, reportPrivateUsage=false, reportOptionalSubscript=false
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 from crossmark_jotform_api.jotForm import JotForm, JotFormSubmission
@@ -56,7 +57,6 @@ class TestJotFormUnit(unittest.TestCase):
         with patch.object(JotForm, "update"):
             jotform = JotForm(self.api_key, self.form_id)
 
-        initial_url = jotform.url
         jotform.set_url_param("test_param", "test_value")
 
         self.assertIn("test_param=test_value", jotform.url)
@@ -181,6 +181,124 @@ class TestJotFormUnit(unittest.TestCase):
         # Try to delete non-existent submission
         with self.assertRaises(KeyError):
             del jotform["nonexistent_id"]
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_submission_answers_by_question_id(self, mock_get):
+        """Test getting submission answers organized by question ID"""
+        # Note: The method iterates over dict.keys(), so each "answer" is actually a string key
+        # This tests the current implementation behavior
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {
+                        "1": {
+                            "name": "fullName",
+                            "id": "1",
+                            "answer": "John Doe",
+                            "text": "Full Name",
+                            "type": "control_textbox",
+                        },
+                        "2": {
+                            "name": "email",
+                            "id": "2",
+                            "answer": "john@example.com",
+                            "text": "Email Address",
+                            "type": "control_email",
+                        },
+                        "3": {
+                            "name": "colors",
+                            "id": "3",
+                            "answer": ["red", "blue"],
+                            "text": "Favorite Colors",
+                            "type": "control_checkbox",
+                        },
+                    },
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_submission_answers_by_question_id("1001")
+
+        self.assertIsInstance(result, dict)
+        self.assertEqual(len(result), 3)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_submission_answers_by_question_with_empty_answers(self, mock_get):
+        """Test getting submission answers when submission has no answers"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {},
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_submission_answers_by_question_id("1001")
+
+        # Should return empty dict
+        self.assertIsInstance(result, dict)
+        self.assertEqual(len(result), 0)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_submission_answers_by_question_alias(self, mock_get):
+        """Test get_submission_answers_by_question as an alias"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {},
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            # Both methods should return the same result
+            result1 = jotform.get_submission_answers_by_question("1001")
+            result2 = jotform.get_submission_answers_by_question_id("1001")
+            self.assertEqual(result1, result2)
 
 
 class TestJotFormSubmission(unittest.TestCase):

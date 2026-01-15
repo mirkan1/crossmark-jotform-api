@@ -1,3 +1,4 @@
+# pyright: reportUnknownArgumentType=false, reportUnusedImport=false, reportUnknownParameterType=false, reportMissingParameterType=false, reportTypedDictNotRequiredAccess=false
 import unittest
 from unittest.mock import Mock, patch
 from crossmark_jotform_api.utils import fix_query_key

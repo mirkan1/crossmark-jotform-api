@@ -12,7 +12,16 @@ from requests.exceptions import RequestException
 from json.decoder import JSONDecodeError
 from .utils import fix_query_key
 from .jotFormSubmission import JotFormSubmission
-from .types import AnswerObject, AnswersDict, FormObject, JotformFormAPIResponse
+from .types import (
+    AnswerType,
+    AnswerValue,
+    AnswersDict,
+    FormObject,
+    JotformFormAPIResponse,
+    Submission as SubmissionType,
+    JotformApiSubmissionContent,
+    JotformCreateSubmissionResponse,
+)
 
 
 class JotForm(ABC):
@@ -71,14 +80,14 @@ class JotForm(ABC):
     @classmethod
     def _set_get_submission_data(
         cls,
-        submissions: List[Dict[str, Any]],
+        submissions: List[SubmissionType],
         api_key: str,
         include_deleted: bool = False,
     ) -> Dict[str, JotFormSubmission]:
         """Sets and gets submission data.
 
         Args:
-            submissions (List[Dict[str, Any]]): List of submissions.
+            submissions (List[SubmissionType]): List of submissions.
             api_key (str): API key for authentication.
             include_deleted (bool, optional): Whether to include deleted submissions. Defaults to False.
 
@@ -87,7 +96,7 @@ class JotForm(ABC):
         """
         submissions_dict: Dict[str, JotFormSubmission] = {}
         for sub in submissions:
-            if sub["status"] == "DELETED" and not include_deleted:
+            if not include_deleted and sub["status"] == "DELETED":
                 continue
             submissions_dict[sub["id"]] = JotFormSubmission(sub, api_key)
         return submissions_dict
@@ -114,28 +123,28 @@ class JotForm(ABC):
 
     def get_submission_answers(
         self, submission_id: Union[int, str]
-    ) -> List[AnswerObject]:
+    ) -> AnswersDict:
         """## Returns the answers of the submission by given submission id
 
         Args:
             submission_id (int or str):
 
         Returns:
-            Dict: answers of the submission
+            AnswersDict: answers of the submission
         """
         self.update()
         return self.submission_data[str(submission_id)].answers
 
     def get_submission_by_request(
         self, submission_id: Union[str, int]
-    ) -> Optional[object]:
+    ) -> Optional[SubmissionType]:
         """## This function gets the submission by request
 
         Args:
-            submission_id (_type_): _description_
+            submission_id (Union[str, int]): _description_
 
         Returns:
-            Optional[object]: _description_
+            Optional[SubmissionType]: _description_
         """
         url = (
             f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}"
@@ -169,7 +178,7 @@ class JotForm(ABC):
             Optional[object]: submission object if successful, None if not
         """
         for _, submission_object in self.submission_data.copy().items():
-            answer: AnswerObject = submission_object.get_answer_by_text(text)
+            answer = submission_object.get_answer_by_text(text)
             if answer == text_answer:
                 return submission_object
         return None
@@ -191,7 +200,7 @@ class JotForm(ABC):
             Optional[object]: submission object if successful, None if not
         """
         for _, submission_object in self.submission_data.copy().items():
-            answer: AnswerObject = submission_object.get_answer_by_name(name)
+            answer = submission_object.get_answer_by_name(name)
             if answer == name_answer:
                 return submission_object
         return None
@@ -222,7 +231,7 @@ class JotForm(ABC):
 
     def get_answer_by_text(
         self, submission_id: Union[int, str], text: str
-    ) -> AnswerObject:
+    ) -> AnswerValue:
         try:
             return self.get_submission(submission_id).get_answer_by_text(text)
         except KeyError:
@@ -231,7 +240,7 @@ class JotForm(ABC):
 
     def get_answer_by_name(
         self, submission_id: Union[int, str], name: str
-    ) -> AnswerObject:
+    ) -> AnswerValue:
         try:
             return self.get_submission(submission_id).get_answer_by_name(name)
         except KeyError:
@@ -240,7 +249,7 @@ class JotForm(ABC):
 
     def get_answer_by_key(
         self, submission_id: Union[int, str], key: str
-    ) -> AnswerObject:
+    ) -> AnswerValue:
         try:
             return self.get_submission(submission_id).get_answer_by_key(key)
         except KeyError:
@@ -249,7 +258,7 @@ class JotForm(ABC):
 
     def get_answer_by_id(
         self, submission_id: Union[int, str], key: str
-    ) -> AnswerObject:
+    ) -> AnswerValue:
         return self.get_answer_by_key(submission_id, key)
 
     def get_submission_answers_by_question(
@@ -263,12 +272,12 @@ class JotForm(ABC):
         self.update()
         submission_answers = self.get_submission_answers(submission_id)
         submission_answers_by_question_id: AnswersDict = {}
-        for answer in submission_answers:
+        for _, answer in submission_answers.items():
             if "id" in answer and "answer" in answer:
                 submission_answers_by_question_id[answer["id"]] = answer["answer"]
         return submission_answers_by_question_id
 
-    def get_list_of_questions(self):
+    def get_list_of_questions(self) -> Optional[JotformApiSubmissionContent]:
         """## jotform endpoint of form/{id}/questions
 
         ### Returns:
@@ -281,7 +290,7 @@ class JotForm(ABC):
             return response["content"]
         return None
 
-    def __delitem__(self, submission_id: Union[int, str]):
+    def __delitem__(self, submission_id: Union[int, str]) -> None:
         """Delete a submission using del operator.
 
         Args:
@@ -290,12 +299,17 @@ class JotForm(ABC):
         Example:
             del jotform_instance[submission_id]
         """
-        if str(submission_id) not in self.submission_data:
+        if not submission_id:
+            raise ValueError("submission_id cannot be empty")
+
+        submission_id = str(submission_id)
+        if submission_id not in self.submission_data:
             raise KeyError(f"Submission {submission_id} not found")
 
         url = (
             f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}"
         )
+
         response = requests.delete(url, timeout=self.timeout)
         if response.status_code == 200:
             del self.submission_data[submission_id]
@@ -305,16 +319,24 @@ class JotForm(ABC):
             raise RuntimeError(f"Failed to delete submission {submission_id}")
 
     def delete_submission(self, submission_id: Union[int, str]) -> bool:
+        if not submission_id:
+            raise ValueError("submission_id cannot be empty")
+
+        submission_id = str(submission_id)
         url = (
             f"https://api.jotform.com/submission/{submission_id}?apiKey={self.api_key}"
         )
         response = requests.delete(url, timeout=self.timeout)
         if response.status_code == 200:
             del self.submission_data[submission_id]
+            self.submission_ids.discard(submission_id)
+            self._set_submission_count()
             return True
         return False
 
-    def create_submission(self, submission: Dict[str, Any]) -> Union[bool, str]:
+    def create_submission(
+        self, submission: SubmissionType
+    ) -> Union[bool, str]:
         """## This function creates a submission in Jotform
         then sets the new submission to the submission data.
 
@@ -332,16 +354,16 @@ class JotForm(ABC):
         url = f"https://api.jotform.com/form/{self.form_id}/submissions?apiKey={self.api_key}"
         response = requests.post(url, data=submission, timeout=self.timeout)
         if response.status_code == 200:
-            response = response.json()
-            _id = response["content"]["submissionID"]
-            submission_data = self.get_submission_by_request(_id)
+            api_response: JotformCreateSubmissionResponse = response.json()
+            submission_id = str(api_response["content"]["submissionID"])
+            submission_data = self.get_submission_by_request(submission_id)
             if submission_data:
                 self.set_new_submission(submission_data)
-                return _id
+                return submission_id
         return False
 
     def create_submission_using_another(
-        self, submission_data: Dict[str, Any], submission_to_copy: JotFormSubmission
+        self, submission_data: SubmissionType, submission_to_copy: JotFormSubmission
     ) -> Union[bool, str]:
         """## This function creates a submission in Jotform
         then sets the new submission to the submission data.
@@ -360,7 +382,7 @@ class JotForm(ABC):
         ### Returns:
             - `bool`: true if successful, false if not
         """
-        data: Dict[str, Any] = {}
+        data: SubmissionType = {}  # type: ignore
         questions = self.get_list_of_questions()
         if not questions:
             return False
@@ -369,24 +391,20 @@ class JotForm(ABC):
             if name in submission_data:
                 data[f"submission[{q}]"] = submission_data[name]
             else:
-                answer_obj = submission_to_copy.get_answer_by_name(name)
-                answer = (
-                    answer_obj["answer"]
-                    if "answer" in answer_obj
-                    else None
-                )
+                answer_obj = submission_to_copy.get_answer_by_name(name)  # type: ignore
+                answer = answer_obj["answer"] if "answer" in answer_obj else None
                 if answer:
                     data[f"submission[{q}]"] = answer
         return self.create_submission(data)
 
     def update_submission_answers_batch(
-        self, submission_id: Union[int, str], answers: AnswersDict
+        self, submission_id: Union[int, str], answers: Dict[str, AnswerType]
     ) -> bool:
         """## This function updates multiple answers of the submission in a single batch request
 
         ### Args:
             - `submission_id (Union[int, str])`: Submission ID
-            - `answers (AnswersDict)`: Dictionary of field_id to answer
+            - `answers (Dict[str, AnswerType])`: Dictionary of field_id to answer
 
         ### Returns:
             - `bool`: True if successful, False if not
@@ -413,14 +431,14 @@ class JotForm(ABC):
         return False
 
     def update_submission_answer(
-        self, submission_id: Union[int, str], field_id: str, answer: AnswerObject
+        self, submission_id: Union[int, str], field_id: str, answer: AnswerType
     ) -> bool:
         """## This function updates the answer of the submission
 
         ### Args:
             - `submission_id (Union[int, str])`: _description_
             - `field_id (str)`: _description_
-            - `answer (Union[int, str])`: _description_
+            - `answer (AnswerType)`: _description_
 
         ### Returns:
             - `bool`: True if successful, False if not
@@ -619,7 +637,7 @@ class JotForm(ABC):
         _json = response.json()
         return _json
 
-    def set_new_submission(self, submission: Dict[str, Any]) -> None:
+    def set_new_submission(self, submission: SubmissionType) -> None:
         self.submission_data.update(
             self._set_get_submission_data([submission], self.api_key)
         )

@@ -1,20 +1,24 @@
-from typing import Union, Dict, List, Any, TypedDict, Optional
+from typing import Optional, Union, Dict, List, Any, TypedDict, NotRequired
 
 
-AnswerValue = Union[str, Dict[str, str], List[Any]]
+AnswerType = Optional[Union[str, List[str], Dict[str, Any]]]
 
 
-class AnswerObject(TypedDict, total=False):
-    text: str
-    type: str
-    answer: AnswerValue
-    prettyFormat: Optional[str]
+class AnswerValue(TypedDict):
+    text: NotRequired[str]
+    key: str
+    order: NotRequired[str]
+    answer: NotRequired[AnswerType]
+    prettyFormat: NotRequired[str]
+    file: NotRequired[Optional[str]]
+    type: NotRequired[str]
+    name: Optional[NotRequired[str]]
+    
+
+AnswersDict = Dict[str, AnswerValue]
 
 
-AnswersDict = Dict[str, AnswerObject]
-
-
-class Submission(TypedDict, total=False):
+class Submission(TypedDict):
     id: str
     form_id: str
     ip: str
@@ -23,21 +27,31 @@ class Submission(TypedDict, total=False):
     status: str
     new: str
     answers: AnswersDict
-    workflowStatus: Optional[str]
-    limit_left: Optional[int]  # Only present in single submission response
+    workflowStatus: NotRequired[str]
+    limit_left: NotRequired[int]  # Only present in single submission response
+
+
+class JotformApiSubmissionContent(Submission):
+    submissionID: str
+
+
+class JotformCreateSubmissionResponse(TypedDict):
+    responseCode: int
+    message: str
+    content: Dict[str, JotformApiSubmissionContent]
 
 
 class JotformAPIResponse(TypedDict):
     responseCode: int
     message: str
-    content: List[Submission]
+    content: List[JotformApiSubmissionContent]
     limit_left: int  # For list submissions endpoint
 
 
 class JotformSingleSubmissionResponse(TypedDict):
     responseCode: int
     message: str
-    content: Submission  # Single submission, may include limit_left
+    content: JotformApiSubmissionContent
 
 
 class FormObject(TypedDict, total=False):
@@ -60,5 +74,5 @@ class FormObject(TypedDict, total=False):
 class JotformFormAPIResponse(TypedDict):
     responseCode: int
     message: str
-    content: Union[List[FormObject], FormObject]
+    content: FormObject
     limit_left: int  # mapped from "limit-left" in JSON

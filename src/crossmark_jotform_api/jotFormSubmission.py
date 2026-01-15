@@ -5,11 +5,10 @@ from abc import ABC
 from datetime import datetime
 from typing import Union, Dict, Optional, List
 import requests
-from .types import AnswerObject, AnswerValue, Submission as SubmissionType
+from .types import AnswerType, AnswerValue, Submission as SubmissionType, AnswersDict
 
 
 class JotFormSubmission(ABC):
-    # TODO seperate this class into another file
     """Base class for JotFormSubmission.
     Takes a submission object and creates a submission object from it.
 
@@ -27,8 +26,8 @@ class JotFormSubmission(ABC):
     flag: bool
     notes: str
     updated_at: str
-    answers: List[AnswerObject]
-    answers_arr: List[AnswerObject]
+    answers: AnswersDict
+    answers_arr: List[AnswerValue]
     emails: List[str]
 
     def __init__(self, submission_object: SubmissionType, api_key: str):
@@ -38,7 +37,7 @@ class JotFormSubmission(ABC):
         self.ip = submission_object.get("ip", "")
         self.created_at = submission_object.get("created_at", "")
         self.status = submission_object.get("status", "")
-        self.new = submission_object.get("new", False)
+        self.new = int(submission_object.get("new", "0")) > 0
         self.flag = submission_object.get("flag", False)
         self.notes = submission_object.get("notes", "")
         self.updated_at = submission_object.get("updated_at", "")
@@ -47,32 +46,22 @@ class JotFormSubmission(ABC):
         self.answers_arr = self.set_answers(self.answers)
         self.emails = self.get_emails()
 
-    def set_answers(self, answers: AnswerObject) -> List[Optional[AnswerObject]]:
+    def set_answers(self, answers: AnswersDict) -> List[AnswerValue]:
         """## This function sets the answers array
 
         Args:
-            answers (AnswerObject): _description_
+            answers (AnswersDict): Dictionary of answer objects
 
         Returns:
-            List[Optional[AnswerObject]]: _description_
+            List[AnswerValue]: List of answer objects
         """
-        answers_arr: List[AnswerObject] = []
+        answers_arr: List[AnswerValue] = []
         for key, value in answers.items():
-            name = None
-            if "name" in value:
-                name = value["name"]
-            answer = None
-            if "answer" in value:
-                answer = value["answer"]
-            _type = None
-            if "type" in value:
-                _type = value["type"]
-            text = None
-            if "text" in value:
-                text = value["text"]
-            file = None
-            if "file" in value:
-                file = value["file"]
+            name = value.get("name", "")
+            answer = value.get("answer", None)
+            _type = value.get("type", "")
+            text = value.get("text", "")
+            file = value.get("file", None)
             answers_arr.append(
                 {
                     "key": key,
@@ -105,12 +94,12 @@ class JotFormSubmission(ABC):
             if "timeFormat" in answer:
                 del answer["timeFormat"]
 
-    def set_answer(self, answer_key: str, answer_value: AnswerObject) -> None:
+    def set_answer(self, answer_key: str, answer_value: AnswerType) -> None:
         """## sets answer value for the given answer id
 
         Args:
             answer_key (str): order integer of the answer
-            answer_value (AnswerObject): value you want to set for the answer
+            answer_value (AnswerType): value you want to set for the answer
         """
 
         for i, answer in enumerate(self.answers_arr):
@@ -119,26 +108,26 @@ class JotFormSubmission(ABC):
         self.answers[answer_key]["answer"] = answer_value
         self.update_submission(self.id, answer_key, answer_value, self.api_key)
 
-    def set_answer_by_text(self, answer_text: str, answer_value: AnswerObject) -> None:
+    def set_answer_by_text(self, answer_text: str, answer_value: AnswerType) -> None:
         """## sets answer value for the given answer text
 
         Args:
             answer_text (str): answer_text of the answer
-            answer_value (AnswerObject): value you want to set for the answer
+            answer_value (AnswerType): value you want to set for the answer
         """
         for i, answer in enumerate(self.answers_arr):
-            if answer.get("text") == answer_text:
+            if answer.get("text") and answer.get("text").upper() == answer_text.upper():  # type: ignore
                 self.answers_arr[i]["answer"] = answer_value
         self.get_answer_by_text(answer_text)["answer"] = answer_value
         answer_key = self.get_answer_by_text(answer_text).get("key")
         self.update_submission(self.id, answer_key, answer_value, self.api_key)
 
-    def set_answer_by_name(self, answer_name: str, answer_value: AnswerObject) -> None:
+    def set_answer_by_name(self, answer_name: str, answer_value: AnswerType) -> None:
         """## sets answer value for the given unique answer name
 
         Args:
             answer_name (str): answer_name of the answer
-            answer_value (AnswerObject): value you want to set for the answer
+            answer_value (AnswerType): value you want to set for the answer
         """
         for i, answer in enumerate(self.answers_arr):
             if answer["name"] == answer_name:
@@ -147,12 +136,12 @@ class JotFormSubmission(ABC):
         answer_key = self.get_answer_by_name(answer_name).get("key")
         self.update_submission(self.id, answer_key, answer_value, self.api_key)
 
-    def set_answer_by_key(self, answer_key: str, answer_value: AnswerObject) -> None:
+    def set_answer_by_key(self, answer_key: str, answer_value: AnswerType) -> None:
         """## sets answer value for the given unique answer key
 
         Args:
             answer_key (str): answer_key of the answer
-            answer_value (AnswerObject): value you want to set for the answer
+            answer_value (AnswerType): value you want to set for the answer
         """
         for i, answer in enumerate(self.answers_arr):
             if answer["key"] == answer_key:
@@ -162,7 +151,7 @@ class JotFormSubmission(ABC):
 
     @classmethod
     def update_submission(
-        cls, submission_id: str, key: str, value: str, api_key: str
+        cls, submission_id: str, key: str, value: AnswerType, api_key: str
     ) -> None:
         """
         Triggers an update for a specific submission in JotForm.
@@ -173,7 +162,7 @@ class JotFormSubmission(ABC):
         Args:
             submission_id (str): The ID of the submission to be updated.
             key (str): The key of the field to be updated.
-            value (str): The new value to be set for the specified field.
+            value (AnswerType): The new value to be set for the specified field.
             api_key (str): The API key to authenticate the request.
 
         Raises:
@@ -189,7 +178,7 @@ class JotFormSubmission(ABC):
         except ConnectionError:
             print(f"cannot trigger for {submission_id}")
 
-    def get_answers(self) -> List[AnswerObject]:
+    def get_answers(self) -> List[AnswerValue]:
         """## This function gets the answers array
 
         Returns:
@@ -197,7 +186,7 @@ class JotFormSubmission(ABC):
         """
         return self.answers_arr
 
-    def get_answer_by_text(self, text: str) -> AnswerObject:
+    def get_answer_by_text(self, text: str) -> AnswerValue:
         """## This function gets the answer by text
          Sensetive to the text, if the text is not exactly the same, it will return None
 
@@ -216,7 +205,7 @@ class JotFormSubmission(ABC):
             }
         """
         for answer in self.answers_arr:
-            if answer.get("text") and answer.get("text").upper() == text.upper():
+            if answer.get("text") and answer.get("text").upper() == text.upper():  # type: ignore
                 _answer = answer.copy()
                 if not answer.get("answer"):
                     _answer["answer"] = None
@@ -226,7 +215,7 @@ class JotFormSubmission(ABC):
                 return _answer
         raise ValueError(f"Answer with text '{text}' not found")
 
-    def get_answer_by_name(self, name: str) -> AnswerObject:
+    def get_answer_by_name(self, name: str) -> AnswerValue:
         for answer in self.answers_arr:
             if answer["name"] and answer["name"] == name:
                 _answer = answer.copy()
@@ -238,7 +227,7 @@ class JotFormSubmission(ABC):
                 return _answer
         raise ValueError(f"Answer with name '{name}' not found")
 
-    def get_answer_by_key(self, key: Union[str, int]) -> AnswerObject:
+    def get_answer_by_key(self, key: Union[str, int]) -> AnswerValue:
         for answer in self.answers_arr:
             if answer["key"] and answer["key"] == str(key):
                 _answer = answer.copy()
@@ -270,19 +259,18 @@ class JotFormSubmission(ABC):
             answer for answer in self.answers_arr if answer["key"] != key
         ]
 
-    def get_emails(self) -> List[Optional[str]]:
+    def get_emails(self) -> List[str]:
         """## This function gets the emails from the answers array
 
         Returns:
-            List[Optional[str]]: list of emails (or None for missing answers)
+            List[str]: list of emails (or None for missing answers)
         """
-        emails: List[Optional[str]] = []
+        emails: List[str] = []
         for answer in self.answers_arr:
             if "type" not in answer:
                 continue
             if answer["type"] == "control_email":
-                # use .get to avoid KeyError and allow None values
-                emails.append(answer.get("answer"))
+                emails.append(answer.get("answer"))  # type: ignore
         return emails
 
     def get_day_from_date(self, date: Union[str, Dict[str, str], datetime]) -> int:
@@ -291,7 +279,7 @@ class JotFormSubmission(ABC):
         Returns the number of days between now and the given date.
         """
         if isinstance(date, dict):
-            date = date.get("answer") or date.get("datetime")
+            date = date.get("answer") or date.get("datetime")  # type: ignore
 
         if isinstance(date, datetime):
             delta = datetime.now() - date
@@ -312,7 +300,7 @@ class JotFormSubmission(ABC):
         """If store is in the format of 'store | store_number', return store_number."""
         return store.split(" | ")[0]
 
-    def to_dict(self) -> Dict[str, Union[str, int, bool, List[Optional[str]]]]:
+    def to_dict(self) -> Dict[str, Union[str, int, bool, List[str]]]:
         """## This function returns the submission object as a dictionary,
         recomendation use case is to inherit this function in your own to_dict call
 
@@ -338,7 +326,7 @@ class JotFormSubmission(ABC):
         end_frmt: str = "%m/%d/%Y %I:%M %p",
     ) -> str:
         if isinstance(date, dict):
-            date = date.get("answer") or date.get("datetime")
+            date = date.get("answer") or date.get("datetime")  # type: ignore
 
         if isinstance(date, str):
             date = datetime.strptime(date, cur_frmt)
@@ -379,7 +367,7 @@ class JotFormSubmission(ABC):
         else:
             return email
 
-    def get_value(self, obj: AnswerObject) -> Optional[AnswerValue]:
+    def get_value(self, obj: AnswerValue) -> Optional[AnswerValue]:
         """## This function gets the value from the object
             When you call this it wont raise an error which makes it the safer version of ["answer"]
             Example:
@@ -387,32 +375,32 @@ class JotFormSubmission(ABC):
             self.get_answer_by_text("CASE")["answer"]
 
         Args:
-            obj (AnswerObject): _description_
+            obj (AnswerValue): _description_
 
         Returns:
-            Optional[Union[AnswerValue, AnswerObject]]: _description_
+            Optional[Union[AnswerValue, AnswerValue]]: _description_
         """
         if isinstance(obj, str):
-            return obj.strip()
+            return obj.strip()  # type: ignore
         elif isinstance(obj, dict):  # pyright: ignore[reportUnnecessaryIsInstance]
             if "answer" in obj:
-                answer: AnswerValue = obj["answer"]
+                answer: AnswerValue = obj["answer"]  # type: ignore
                 if isinstance(answer, list):
-                    return answer[0]
+                    return answer[0]  # type: ignore
                 return answer
             elif len(obj) > 1:
                 return obj
             elif len(obj) == 1:
-                return next(iter(obj.values()))
+                return next(iter(obj.values()))  # type: ignore
         else:
             return None
 
-    def tide_answer_for_list(self, answer: AnswerObject) -> str:
+    def tide_answer_for_list(self, answer: AnswerValue) -> str:
         """## This function converts the answer to a string, gives commas for each answer `,`
         ### Output is like:
             * Answer 1, Answer 2, Answer 3
         Args:
-            answer (AnswerObject): _description_
+            answer (AnswerValue): _description_
 
         Returns:
             str: _description_
@@ -434,7 +422,7 @@ class JotFormSubmission(ABC):
                     string += f", {value}"
         return string
 
-    def answer_for_html(self, answer: AnswerObject) -> str:
+    def answer_for_html(self, answer: AnswerValue) -> str:
         """## This function converts the answer to HTML format, gives breaks for each answer `<br>`
         ### Output is like:
             * Answer 1
@@ -470,14 +458,14 @@ class JotFormSubmission(ABC):
             html = f"*{answer}"
         return html
 
-    def make_array(self, answer: AnswerObject) -> List[AnswerValue]:
+    def make_array(self, answer: AnswerValue) -> List[AnswerValue]:
         if not answer:
             return []
         elif isinstance(answer, int):
             return [answer]
 
         if "answer" in answer:
-            answer = answer["answer"]
+            answer = answer["answer"]  # type: ignore
 
         if isinstance(answer, list):
             return answer
@@ -485,7 +473,7 @@ class JotFormSubmission(ABC):
             if answer.strip() == "":
                 return []
             elif "," in answer:
-                return [x.strip() for x in answer.split(",")]
+                return [x.strip() for x in answer.split(",")]  # type: ignore
             else:
                 return [answer]
         else:
