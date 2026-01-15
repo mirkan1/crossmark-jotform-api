@@ -1,4 +1,9 @@
-from typing import Optional, Union, Dict, List, Any, TypedDict, NotRequired
+from typing import Optional, Union, Dict, List, Any, TypedDict
+
+try:
+    from typing import NotRequired
+except ImportError:
+    from typing_extensions import NotRequired
 
 
 AnswerType = Optional[Union[str, List[str], Dict[str, Any]]]
@@ -13,7 +18,7 @@ class AnswerValue(TypedDict):
     file: NotRequired[Optional[str]]
     type: NotRequired[str]
     name: Optional[NotRequired[str]]
-    
+
 
 AnswersDict = Dict[str, AnswerValue]
 
