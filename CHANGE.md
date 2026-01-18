@@ -1,6 +1,8 @@
 
 # JotFormSubmission Library Change Log
 
+- 2025-12-25 v2.6.3:
+  - added type hints to all methods in jotForm.py and jotform_submission.py for better code clarity and maintainability
 - 2025-12-25 v2.6.1:
   - set changed to Set for python 3.8 compatibility
 - 2025-12-25 v2.6.0:

@@ -561,5 +561,548 @@ class TestJotFormSubmissionAdvanced(unittest.TestCase):
         self.assertIn("not found", str(context.exception))
 
 
+class TestJotFormUpdateAnswers(unittest.TestCase):
+    """Tests for updating submission answers"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        self.api_key = "test_api_key"
+        self.form_id = "123456"
+        self.submission_id = "1001"
+        self.sample_submission = {
+            "id": self.submission_id,
+            "form_id": self.form_id,
+            "ip": "192.168.1.1",
+            "created_at": "2024-01-01 12:00:00",
+            "status": "ACTIVE",
+            "new": "1",
+            "flag": "0",
+            "notes": "",
+            "updated_at": "2024-01-01 12:00:00",
+            "answers": {
+                "1": {
+                    "name": "fullName",
+                    "text": "Full Name",
+                    "answer": "John Doe",
+                    "type": "control_textbox",
+                },
+                "2": {
+                    "name": "colors",
+                    "text": "Favorite Colors",
+                    "answer": ["red", "blue"],
+                    "type": "control_checkbox",
+                },
+            },
+        }
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_update_submission_answer_success(self, mock_post, mock_get):
+        """Test successfully updating a single submission answer"""
+        mock_get_response = Mock()
+        mock_get_response.status_code = 200
+        mock_get_response.json.return_value = {
+            "content": [self.sample_submission],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_get_response
+
+        mock_post_response = Mock()
+        mock_post_response.status_code = 200
+        mock_post.return_value = mock_post_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.update_submission_answer(
+                self.submission_id, "1", "Jane Doe"
+            )
+
+        self.assertTrue(result)
+        # Verify the submission was updated
+        self.assertEqual(
+            jotform.submission_data[self.submission_id].answers["1"]["answer"],
+            "Jane Doe",
+        )
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_update_submission_answer_with_list(self, mock_post, mock_get):
+        """Test updating submission answer with list value"""
+        mock_get_response = Mock()
+        mock_get_response.status_code = 200
+        mock_get_response.json.return_value = {
+            "content": [self.sample_submission],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_get_response
+
+        mock_post_response = Mock()
+        mock_post_response.status_code = 200
+        mock_post.return_value = mock_post_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            new_colors = ["green", "yellow", "purple"]
+            result = jotform.update_submission_answer(
+                self.submission_id, "2", new_colors
+            )
+
+        self.assertTrue(result)
+        # Verify the submission was updated with the list
+        self.assertEqual(
+            jotform.submission_data[self.submission_id].answers["2"]["answer"],
+            new_colors,
+        )
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_update_submission_answer_failure(self, mock_post, mock_get):
+        """Test failing to update submission answer"""
+        mock_get_response = Mock()
+        mock_get_response.status_code = 200
+        mock_get_response.json.return_value = {
+            "content": [self.sample_submission],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_get_response
+
+        mock_post_response = Mock()
+        mock_post_response.status_code = 400
+        mock_post.return_value = mock_post_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.update_submission_answer(
+                self.submission_id, "1", "Jane Doe"
+            )
+
+        self.assertFalse(result)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_update_submission_answers_batch_success(self, mock_post, mock_get):
+        """Test successfully updating multiple submission answers in batch"""
+        mock_get_response = Mock()
+        mock_get_response.status_code = 200
+        mock_get_response.json.return_value = {
+            "content": [self.sample_submission],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_get_response
+
+        mock_post_response = Mock()
+        mock_post_response.status_code = 200
+        mock_post.return_value = mock_post_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            answers = {"1": "Jane Doe", "2": ["green", "yellow"]}
+            result = jotform.update_submission_answers_batch(
+                self.submission_id, answers
+            )
+
+        self.assertTrue(result)
+        # Verify both answers were updated
+        self.assertEqual(
+            jotform.submission_data[self.submission_id].answers["1"]["answer"],
+            "Jane Doe",
+        )
+        self.assertEqual(
+            jotform.submission_data[self.submission_id].answers["2"]["answer"],
+            ["green", "yellow"],
+        )
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_update_submission_answers_batch_failure(self, mock_post, mock_get):
+        """Test failing to update multiple answers in batch"""
+        mock_get_response = Mock()
+        mock_get_response.status_code = 200
+        mock_get_response.json.return_value = {
+            "content": [self.sample_submission],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_get_response
+
+        mock_post_response = Mock()
+        mock_post_response.status_code = 400
+        mock_post.return_value = mock_post_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            answers = {"1": "Jane Doe", "2": ["green", "yellow"]}
+            result = jotform.update_submission_answers_batch(
+                self.submission_id, answers
+            )
+
+        self.assertFalse(result)
+
+
+class TestJotFormQueryMethods(unittest.TestCase):
+    """Tests for query and search methods"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        self.api_key = "test_api_key"
+        self.form_id = "123456"
+        self.sample_submission = {
+            "id": "1001",
+            "form_id": self.form_id,
+            "ip": "192.168.1.1",
+            "created_at": "2024-01-01 12:00:00",
+            "status": "ACTIVE",
+            "new": "1",
+            "flag": "0",
+            "notes": "",
+            "updated_at": "2024-01-01 12:00:00",
+            "answers": {
+                "1": {
+                    "name": "caseid",
+                    "text": "Case ID",
+                    "answer": "CASE-12345",
+                    "type": "control_textbox",
+                },
+                "2": {
+                    "name": "email",
+                    "text": "Email",
+                    "answer": "john@example.com",
+                    "type": "control_email",
+                },
+            },
+        }
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_request_submission_by_case_id_success(self, mock_get):
+        """Test requesting submission by case ID successfully"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [self.sample_submission],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "update"):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.request_submission_by_case_id("CASE-12345")
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result["content"]), 1)
+        self.assertEqual(result["content"][0]["id"], "1001")
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_request_submission_by_case_id_failure(self, mock_get):
+        """Test requesting submission by case ID with failure"""
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "update"):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.request_submission_by_case_id("NONEXISTENT")
+
+        self.assertIsNone(result)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_user_data_by_email_found(self, mock_get):
+        """Test getting user data by email"""
+        sample_submission_with_email = self.sample_submission.copy()
+        sample_submission_with_email["answers"]["2"] = {
+            "name": "email",
+            "text": "Email",
+            "answer": "john@example.com",
+            "type": "control_email",
+        }
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [sample_submission_with_email],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_user_data_by_email("john@example.com")
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].id, "1001")
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_user_data_by_email_case_insensitive(self, mock_get):
+        """Test getting user data by email with case insensitivity"""
+        sample_submission_with_email = self.sample_submission.copy()
+        sample_submission_with_email["answers"]["2"] = {
+            "name": "email",
+            "text": "Email",
+            "answer": "john@example.com",
+            "type": "control_email",
+        }
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [sample_submission_with_email],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_user_data_by_email("JOHN@EXAMPLE.COM")
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_user_data_by_email_not_found(self, mock_get):
+        """Test getting user data by email when not found"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [self.sample_submission],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_user_data_by_email("nonexistent@example.com")
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 0)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_user_data_by_email_none(self, mock_get):
+        """Test getting user data with empty email"""
+        with patch.object(JotForm, "update"):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_user_data_by_email("")
+
+        self.assertIsNone(result)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_create_submission_using_another_success(self, mock_post, mock_get):
+        """Test creating submission using another as template"""
+        # Mock questions endpoint
+        questions_response = Mock()
+        questions_response.status_code = 200
+        questions_response.json.return_value = {
+            "content": {
+                "1": {"name": "fullName", "type": "control_textbox"},
+                "2": {"name": "email", "type": "control_email"},
+            }
+        }
+
+        # Mock new submission response
+        new_submission = self.sample_submission.copy()
+        new_submission["id"] = "9999"
+        new_submission["answers"]["1"]["answer"] = "Jane Doe"
+        new_submission["answers"]["2"]["answer"] = "jane@example.com"
+
+        submissions_response = Mock()
+        submissions_response.status_code = 200
+        submissions_response.json.return_value = {
+            "content": [self.sample_submission],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+
+        get_submission_response = Mock()
+        get_submission_response.status_code = 200
+        get_submission_response.json.return_value = {"content": new_submission}
+
+        # Set up side effect to return different responses based on URL
+        def get_side_effect(url, *args, **kwargs):
+            if "questions" in url:
+                return questions_response
+            elif "submission/9999" in url:
+                return get_submission_response
+            return submissions_response
+
+        mock_get.side_effect = get_side_effect
+
+        # Mock post for creation
+        post_response = Mock()
+        post_response.status_code = 200
+        post_response.json.return_value = {"content": {"submissionID": "9999"}}
+        mock_post.return_value = post_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            template_submission = JotFormSubmission(
+                self.sample_submission, self.api_key
+            )
+
+            submission_data = {"fullName": "Jane Doe", "email": "jane@example.com"}
+            result = jotform.create_submission_using_another(
+                submission_data, template_submission
+            )
+
+        self.assertEqual(result, "9999")
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("crossmark_jotform_api.jotForm.requests.post")
+    def test_create_submission_using_another_no_questions(self, mock_post, mock_get):
+        """Test creating submission using another when questions fetch fails"""
+        # Mock failed questions endpoint
+        questions_response = Mock()
+        questions_response.status_code = 404
+        mock_get.return_value = questions_response
+
+        with patch.object(JotForm, "update"):
+            jotform = JotForm(self.api_key, self.form_id)
+            template_submission = JotFormSubmission(
+                self.sample_submission, self.api_key
+            )
+
+            submission_data = {"fullName": "Jane Doe"}
+            result = jotform.create_submission_using_another(
+                submission_data, template_submission
+            )
+
+        self.assertFalse(result)
+
+
+class TestJotFormErrorHandling(unittest.TestCase):
+    """Tests for error handling and edge cases"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        self.api_key = "test_api_key"
+        self.form_id = "123456"
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_debug_print_enabled(self, mock_get):
+        """Test that debug print works when enabled"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [],
+            "resultSet": {"offset": 0, "limit": 1000},
+        }
+        mock_get.return_value = mock_response
+
+        with patch("builtins.print") as mock_print:
+            with patch.object(JotForm, "_fetch_submissions_count", return_value=0):
+                jotform = JotForm(self.api_key, self.form_id)
+                jotform.debug = True
+                jotform._print("Test message")
+
+            mock_print.assert_called_with("Test message")
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_debug_print_disabled(self, mock_get):
+        """Test that debug print doesn't print when disabled"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [],
+            "resultSet": {"offset": 0, "limit": 1000},
+        }
+        mock_get.return_value = mock_response
+
+        with patch("builtins.print") as mock_print:
+            with patch.object(JotForm, "_fetch_submissions_count", return_value=0):
+                jotform = JotForm(self.api_key, self.form_id)
+                jotform.debug = False
+                jotform._print("Test message")
+
+            mock_print.assert_not_called()
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("crossmark_jotform_api.jotForm.requests.delete")
+    def test_delete_submission_success(self, mock_delete, mock_get):
+        """Test successful submission deletion"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "status": "ACTIVE",
+                    "answers": {},
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        delete_response = Mock()
+        delete_response.status_code = 200
+        mock_delete.return_value = delete_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.delete_submission("1001")
+
+        self.assertTrue(result)
+        self.assertNotIn("1001", jotform.submission_data)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("crossmark_jotform_api.jotForm.requests.delete")
+    def test_delete_submission_failure(self, mock_delete, mock_get):
+        """Test failed submission deletion"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "status": "ACTIVE",
+                    "answers": {},
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        delete_response = Mock()
+        delete_response.status_code = 404
+        mock_delete.return_value = delete_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.delete_submission("1001")
+
+        self.assertFalse(result)
+        # Submission should still be in data
+        self.assertIn("1001", jotform.submission_data)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("crossmark_jotform_api.jotForm.requests.delete")
+    def test_delete_submission_empty_id(self, mock_delete, mock_get):
+        """Test deleting submission with empty ID"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [],
+            "resultSet": {"offset": 0, "limit": 1000},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=0):
+            jotform = JotForm(self.api_key, self.form_id)
+
+            with self.assertRaises(ValueError):
+                jotform.delete_submission("")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -300,6 +300,434 @@ class TestJotFormUnit(unittest.TestCase):
             result2 = jotform.get_submission_answers_by_question_id("1001")
             self.assertEqual(result1, result2)
 
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_submission_by_text_found(self, mock_get):
+        """Test getting submission by text when found"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {
+                        "1": {
+                            "name": "fullName",
+                            "text": "Full Name",
+                            "answer": "John Doe",
+                            "type": "control_textbox",
+                        }
+                    },
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            # The method compares the answer object, not just the value
+            answer_obj = jotform.submission_data["1001"].get_answer_by_text("Full Name")
+            result = jotform.get_submission_by_text("Full Name", answer_obj)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.id, "1001")
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_submission_by_text_not_found(self, mock_get):
+        """Test getting submission by text when not found"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {
+                        "1": {
+                            "name": "fullName",
+                            "text": "Full Name",
+                            "answer": "John Doe",
+                            "type": "control_textbox",
+                        }
+                    },
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_submission_by_text("Full Name", "Jane Doe")
+
+        self.assertIsNone(result)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_submission_by_name_found(self, mock_get):
+        """Test getting submission by name when found"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {
+                        "1": {
+                            "name": "fullName",
+                            "text": "Full Name",
+                            "answer": "John Doe",
+                            "type": "control_textbox",
+                        }
+                    },
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            # The method compares the answer object, not just the value
+            answer_obj = jotform.submission_data["1001"].get_answer_by_name("fullName")
+            result = jotform.get_submission_by_name("fullName", answer_obj)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.id, "1001")
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_submission_by_name_not_found(self, mock_get):
+        """Test getting submission by name when not found"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {
+                        "1": {
+                            "name": "fullName",
+                            "text": "Full Name",
+                            "answer": "John Doe",
+                            "type": "control_textbox",
+                        }
+                    },
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_submission_by_name("fullName", "Jane Doe")
+
+        self.assertIsNone(result)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_submission_by_key_found(self, mock_get):
+        """Test getting submission by key when found"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {
+                        "1": {
+                            "name": "fullName",
+                            "text": "Full Name",
+                            "answer": "John Doe",
+                            "type": "control_textbox",
+                        }
+                    },
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            # The method compares the answer object, not just the value
+            answer_obj = jotform.submission_data["1001"].get_answer_by_key("1")
+            result = jotform.get_submission_by_key("1", answer_obj)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.id, "1001")
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_submission_by_key_not_found(self, mock_get):
+        """Test getting submission by key when not found"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {
+                        "1": {
+                            "name": "fullName",
+                            "text": "Full Name",
+                            "answer": "John Doe",
+                            "type": "control_textbox",
+                        }
+                    },
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_submission_by_key("1", "Jane Doe")
+
+        self.assertIsNone(result)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_submission_by_request_success(self, mock_get):
+        """Test getting submission by request when successful"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": {
+                "id": "1001",
+                "form_id": self.form_id,
+                "ip": "192.168.1.1",
+                "created_at": "2024-01-01 12:00:00",
+                "status": "ACTIVE",
+                "new": "1",
+                "flag": "0",
+                "notes": "",
+                "updated_at": "2024-01-01 12:00:00",
+                "answers": {},
+            }
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "update"):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_submission_by_request("1001")
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["id"], "1001")
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_submission_by_request_failure(self, mock_get):
+        """Test getting submission by request when failed"""
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "update"):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_submission_by_request("nonexistent")
+
+        self.assertIsNone(result)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_answer_by_text_success(self, mock_get):
+        """Test getting answer by text from submission"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {
+                        "1": {
+                            "name": "fullName",
+                            "text": "Full Name",
+                            "answer": "John Doe",
+                            "type": "control_textbox",
+                        }
+                    },
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_answer_by_text("1001", "Full Name")
+
+        # The method returns the full answer object
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["answer"], "John Doe")
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_answer_by_name_success(self, mock_get):
+        """Test getting answer by name from submission"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {
+                        "1": {
+                            "name": "fullName",
+                            "text": "Full Name",
+                            "answer": "John Doe",
+                            "type": "control_textbox",
+                        }
+                    },
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_answer_by_name("1001", "fullName")
+
+        # The method returns the full answer object
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["answer"], "John Doe")
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_answer_by_key_success(self, mock_get):
+        """Test getting answer by key from submission"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {
+                        "1": {
+                            "name": "fullName",
+                            "text": "Full Name",
+                            "answer": "John Doe",
+                            "type": "control_textbox",
+                        }
+                    },
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_answer_by_key("1001", "1")
+
+        # The method returns the full answer object
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["answer"], "John Doe")
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_answer_by_id_success(self, mock_get):
+        """Test get_answer_by_id as alias for get_answer_by_key"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [
+                {
+                    "id": "1001",
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {
+                        "1": {
+                            "name": "fullName",
+                            "text": "Full Name",
+                            "answer": "John Doe",
+                            "type": "control_textbox",
+                        }
+                    },
+                }
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+            jotform = JotForm(self.api_key, self.form_id)
+            result = jotform.get_answer_by_id("1001", "1")
+
+        # The method returns the full answer object
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["answer"], "John Doe")
+
 
 class TestJotFormSubmission(unittest.TestCase):
     """Unit tests for JotFormSubmission"""
