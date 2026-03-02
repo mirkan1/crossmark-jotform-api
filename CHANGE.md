@@ -1,6 +1,8 @@
 
 # JotFormSubmission Library Change Log
 
+- 2026-03-03 v2.6.4:
+  - ensured `attempt` and `max_attempts` are integers in relevant methods for better type safety
 - 2025-12-25 v2.6.3:
   - added type hints to all methods in jotForm.py and jotform_submission.py for better code clarity and maintainability
 - 2025-12-25 v2.6.1:

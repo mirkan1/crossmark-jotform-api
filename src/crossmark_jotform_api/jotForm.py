@@ -529,6 +529,8 @@ class JotForm(ABC):
         Returns:
             bool: True if updates, False if not
         """
+        attempt = int(attempt)
+        max_attempts = int(max_attempts)
         count = count - self.submission_count
         if count <= 0:
             return False
@@ -592,6 +594,9 @@ class JotForm(ABC):
         Returns:
             bool: True if updates, False if not
         """
+        # Ensure attempt and max_attempts are integers (handle string inputs)
+        attempt = int(attempt)
+        max_attempts = int(max_attempts)
         self.set_url_param("limit", "1000")
         self.set_url_param("orderby", "updated_at")
         self.set_url_param("offset", "0")
