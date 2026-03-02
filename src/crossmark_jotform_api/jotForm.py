@@ -121,9 +121,7 @@ class JotForm(ABC):
     def get_submission_count(self) -> int:
         return self.submission_count
 
-    def get_submission_answers(
-        self, submission_id: Union[int, str]
-    ) -> AnswersDict:
+    def get_submission_answers(self, submission_id: Union[int, str]) -> AnswersDict:
         """## Returns the answers of the submission by given submission id
 
         Args:
@@ -256,9 +254,7 @@ class JotForm(ABC):
             self.update()
             return self.get_submission(submission_id).get_answer_by_key(key)
 
-    def get_answer_by_id(
-        self, submission_id: Union[int, str], key: str
-    ) -> AnswerValue:
+    def get_answer_by_id(self, submission_id: Union[int, str], key: str) -> AnswerValue:
         return self.get_answer_by_key(submission_id, key)
 
     def get_submission_answers_by_question(
@@ -334,9 +330,7 @@ class JotForm(ABC):
             return True
         return False
 
-    def create_submission(
-        self, submission: SubmissionType
-    ) -> Union[bool, str]:
+    def create_submission(self, submission: SubmissionType) -> Union[bool, str]:
         """## This function creates a submission in Jotform
         then sets the new submission to the submission data.
 
@@ -551,7 +545,7 @@ class JotForm(ABC):
             elif limit >= 1000:
                 self.set_url_param("offset", data["resultSet"]["offset"] + limit)
                 sleep(0.33)
-                return self._fetch_new_submissions(count - limit, attempt)
+                return self._fetch_new_submissions(count - limit, attempt, max_attempts)
             self.set_global_data()
             return True
 
@@ -564,15 +558,15 @@ class JotForm(ABC):
                     sleep_time = 2**attempt
                     sleep(sleep_time)
                     return self._fetch_new_submissions(
-                        count + self.submission_count, attempt + 1
+                        count + self.submission_count, attempt + 1, max_attempts
                     )
             self._print(f"Request failed: {http_err}")
-        except (RequestException, JSONDecodeError) as e:
+        except (RequestException, JSONDecodeError, ValueError) as e:
             self._print(f"Request failed: {e}")
             if attempt < max_attempts:
                 sleep(0.666)
                 return self._fetch_new_submissions(
-                    count + self.submission_count, attempt + 1
+                    count + self.submission_count, attempt + 1, max_attempts
                 )
 
         except KeyError as e:
@@ -612,11 +606,11 @@ class JotForm(ABC):
             self.set_global_data()
             return True
 
-        except (RequestException, JSONDecodeError) as e:
+        except (RequestException, JSONDecodeError, ValueError) as e:
             self._print(f"Request failed: {e}")
             if attempt < max_attempts:
                 sleep(0.666)
-                return self._fetch_updated_submissions(attempt + 1)
+                return self._fetch_updated_submissions(attempt + 1, max_attempts)
 
         except KeyError as e:
             self._print(f"KeyError: {e}")
@@ -768,12 +762,42 @@ class JotForm(ABC):
                 filter_str = filter_param
 
         params = {"filter": filter_str}
-        response = requests.get(
-            cls.build_url(form_id, api_key), params=params, timeout=45
-        )
-        if response.status_code == 200:
-            submissions = response.json().get("content", [])
-            return cls._set_get_submission_data(submissions, api_key)
-        else:
-            print(f"JotForm API error: {response.status_code} - {response.text}")
+        # TODO: try raise for exectipns of requests and json decoding, and retry a few times with backoff since this is a user facing function and can be used in critical places
+        
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                response = requests.get(
+                    cls.build_url(form_id, api_key), params=params, timeout=45
+                )
+            except RequestException as request_error:
+                if attempt < max_attempts - 1:
+                    sleep(0.666)
+                    continue
+                print(f"JotForm request error: {request_error}")
+                return {}
+
+            if response.status_code != 200:
+                print(f"JotForm API error: {response.status_code} - {response.text}")
+                return {}
+            data = None
+            try:
+                data = response.json()
+            except (JSONDecodeError, ValueError) as decode_error:
+                if attempt < max_attempts - 1:
+                    sleep(0.666)
+                    continue
+                response_preview = response.text[:500].replace("\n", " ")
+                print(f"JotForm API returned invalid JSON: {decode_error}")
+                if response_preview:
+                    print(f"Response preview: {response_preview}")
+                return {}
+
+            if not isinstance(data, dict):
+                print("JotForm API returned an unexpected response format.")
+                return {}
+
+            submissions = data.get("content", [])
+            return cls._set_get_submission_data(submissions, api_key)  # type: ignore
+
         return {}

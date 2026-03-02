@@ -165,6 +165,50 @@ class TestJotFormAdvanced(unittest.TestCase):
         self.assertIn("1001", result)
         mock_get.assert_called_once()
 
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_get_submission_data_by_query_retries_on_invalid_json(self, mock_get):
+        """Test query method retries when API returns malformed JSON"""
+        bad_response = Mock()
+        bad_response.status_code = 200
+        bad_response.text = '{"content": ["incomplete"'
+        bad_response.json.side_effect = ValueError("Unterminated string")
+
+        good_response = Mock()
+        good_response.status_code = 200
+        good_response.text = ""
+        good_response.json.return_value = self.mock_response_data
+
+        mock_get.side_effect = [bad_response, good_response]
+
+        result = JotForm.get_submission_data_by_query(
+            {"3:matches": "Will VanSaders"}, self.api_key, self.form_id
+        )
+
+        self.assertEqual(len(result), 1)
+        self.assertIn("1001", result)
+        self.assertEqual(mock_get.call_count, 2)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    @patch("builtins.print")
+    def test_get_submission_data_by_query_returns_empty_after_invalid_json_retries(
+        self, mock_print, mock_get
+    ):
+        """Test query method returns empty dict after exhausting invalid JSON retries"""
+        bad_response = Mock()
+        bad_response.status_code = 200
+        bad_response.text = '{"content": ["incomplete"'
+        bad_response.json.side_effect = ValueError("Unterminated string")
+
+        mock_get.return_value = bad_response
+
+        result = JotForm.get_submission_data_by_query(
+            {"3:matches": "Will VanSaders"}, self.api_key, self.form_id
+        )
+
+        self.assertEqual(result, {})
+        self.assertEqual(mock_get.call_count, 3)
+        self.assertTrue(mock_print.called)
+
     def test_get_submission_data_by_query_invalid_input(self):
         """Test get_submission_data_by_query with invalid input"""
         with self.assertRaises(ValueError):
@@ -175,6 +219,43 @@ class TestJotFormAdvanced(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             JotForm.get_submission_data_by_query(123, self.api_key, self.form_id)
+
+    @patch("crossmark_jotform_api.jotForm.sleep", return_value=None)
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_fetch_new_submissions_handles_json_value_error(self, mock_get, mock_sleep):
+        """Test _fetch_new_submissions retries and returns False on JSON parse ValueError"""
+        bad_response = Mock()
+        bad_response.raise_for_status.return_value = None
+        bad_response.json.side_effect = ValueError("Unterminated string")
+        mock_get.return_value = bad_response
+
+        with patch.object(JotForm, "update"):
+            jotform = JotForm(self.api_key, self.form_id)
+
+        jotform.submission_count = 0
+        result = jotform._fetch_new_submissions(1, max_attempts=1)
+
+        self.assertFalse(result)
+        self.assertEqual(mock_get.call_count, 2)
+
+    @patch("crossmark_jotform_api.jotForm.sleep", return_value=None)
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_fetch_updated_submissions_handles_json_value_error(
+        self, mock_get, mock_sleep
+    ):
+        """Test _fetch_updated_submissions retries and returns False on JSON parse ValueError"""
+        bad_response = Mock()
+        bad_response.raise_for_status.return_value = None
+        bad_response.json.side_effect = ValueError("Unterminated string")
+        mock_get.return_value = bad_response
+
+        with patch.object(JotForm, "update"):
+            jotform = JotForm(self.api_key, self.form_id)
+
+        result = jotform._fetch_updated_submissions(max_attempts=1)
+
+        self.assertFalse(result)
+        self.assertEqual(mock_get.call_count, 2)
 
 
 class TestJotFormSubmissionAdvanced(unittest.TestCase):
