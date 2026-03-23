@@ -544,22 +544,32 @@ class JotForm(ABC):
                 return True
             elif limit >= 1000:
                 self.set_url_param("offset", data["resultSet"]["offset"] + limit)
-                sleep(0.33)
                 return self._fetch_new_submissions(count - limit, attempt, max_attempts)
             self.set_global_data()
             return True
 
         except requests.exceptions.HTTPError as http_err:
-            if http_err.response is not None and http_err.response.status_code == 429:
-                self._print(
-                    f"Request failed: {http_err} (429 Too Many Requests). Retrying with backoff..."
-                )
-                if attempt < max_attempts:
-                    sleep_time = 2**attempt
-                    sleep(sleep_time)
-                    return self._fetch_new_submissions(
-                        count + self.submission_count, attempt + 1, max_attempts
+            if http_err.response is not None:
+                if http_err.response.status_code == 429:  # Too Many Requests
+                    self._print(
+                        f"Request failed: {http_err}\nRetrying with backoff..."
                     )
+                    if attempt < max_attempts:
+                        sleep_time = 2**attempt
+                        sleep(sleep_time)
+                        return self._fetch_new_submissions(
+                            count + self.submission_count, attempt + 1, max_attempts
+                        )
+                elif http_err.response.status_code == 504:  # Gateway timeout
+                    self._print(
+                        f"Request failed: {http_err}\nRetrying with backoff..."
+                    )
+                    if attempt < max_attempts:
+                        sleep_time = 2**attempt
+                        sleep(sleep_time)
+                        return self._fetch_new_submissions(
+                            count + self.submission_count, attempt + 1, max_attempts
+                        )
             self._print(f"Request failed: {http_err}")
         except (RequestException, JSONDecodeError, ValueError) as e:
             self._print(f"Request failed: {e}")

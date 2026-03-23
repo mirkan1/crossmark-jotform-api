@@ -1,6 +1,8 @@
 
 # JotFormSubmission Library Change Log
 
+- 2026-03-23 v2.6.6:
+  - catch for gatewey timeout error is added to the `_fetch_updated_submissions` and `_fetch_new_submissions` functions, with a retry mechanism that includes exponential backoff, allowing up to 5 attempts before giving up and raising the error.
 - 2026-03-03 v2.6.5:
   - added type hints to all methods in jotForm.py and jotform_submission.py for better code clarity and maintainability
 - 2026-03-03 v2.6.4:
