@@ -22,6 +22,9 @@ from .types import (
     JotformApiSubmissionContent,
     JotformCreateSubmissionResponse,
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class JotForm(ABC):
@@ -73,9 +76,25 @@ class JotForm(ABC):
             + api_key
         )
 
-    def _print(self, text: str) -> None:
+    def set_logging(self, debug: bool) -> None:
+        """Enables or disables debug logging.
+
+        Args:
+            debug (bool): If True, enables debug logging; if False, disables it.
+        """
+        self.debug = debug
+
+    def set_logging_level(self, level: int) -> None:
+        """Sets the logging level for debug output.
+
+        Args:
+            level (int): Logging level (e.g., logging.DEBUG, logging.INFO, logging.WARNING).
+        """
+        logger.setLevel(level)
+
+    def _print(self, text: str, level: int = logging.INFO) -> None:
         if self.debug:
-            print(text)
+            logger.log(level, text)
 
     @classmethod
     def _set_get_submission_data(
@@ -511,7 +530,11 @@ class JotForm(ABC):
             return missing_ids.pop()
 
     def _fetch_new_submissions(
-        self, count: int, attempt: int = 0, max_attempts: int = 5
+        self,
+        count: int,
+        attempt: int = 0,
+        max_attempts: int = 5,
+        limit: Optional[int] = None,
     ) -> bool:
         """## It is already newest to oldest so we can request one query, and it should be enough
 
@@ -528,7 +551,10 @@ class JotForm(ABC):
         count = count - self.submission_count
         if count <= 0:
             return False
-        limit = 1000 if count > 1000 else count
+        limit = limit or (1000 if count > 1000 else count)
+        logger.info(
+            f"Fetching new submissions: count={count}, attempt={attempt}, limit={limit}"
+        )
         self.set_url_param("limit", limit)
         self.set_url_param("orderby", "id")
         try:
@@ -539,49 +565,69 @@ class JotForm(ABC):
             self.submission_data.update(
                 self._set_get_submission_data(data["content"], self.api_key)
             )
-            if len(data["content"]) < limit:
+            if len(data["content"]) < limit - 1:
                 self.set_global_data()
                 return True
+            elif len(data["content"]) == limit and count > limit:
+                self.set_url_param("offset", data["resultSet"]["offset"] + limit)
+                return self._fetch_new_submissions(
+                    count - limit, attempt, max_attempts, limit
+                )
             elif limit >= 1000:
                 self.set_url_param("offset", data["resultSet"]["offset"] + limit)
-                return self._fetch_new_submissions(count - limit, attempt, max_attempts)
+                return self._fetch_new_submissions(
+                    count - limit, attempt, max_attempts, limit
+                )
             self.set_global_data()
             return True
-
         except requests.exceptions.HTTPError as http_err:
             if http_err.response is not None:
                 if http_err.response.status_code == 429:  # Too Many Requests
-                    self._print(
-                        f"Request failed: {http_err}\nRetrying with backoff..."
-                    )
+                    self._print(f"Request failed: {http_err}\nRetrying with backoff...")
                     if attempt < max_attempts:
-                        sleep_time = 2**attempt
-                        sleep(sleep_time)
                         return self._fetch_new_submissions(
-                            count + self.submission_count, attempt + 1, max_attempts
+                            count + self.submission_count,
+                            attempt + 1,
+                            max_attempts,
+                            limit,
                         )
                 elif http_err.response.status_code == 504:  # Gateway timeout
-                    self._print(
-                        f"Request failed: {http_err}\nRetrying with backoff..."
-                    )
+                    self._print(f"Request failed: {http_err}\nRetrying with backoff...")
                     if attempt < max_attempts:
-                        sleep_time = 2**attempt
-                        sleep(sleep_time)
-                        return self._fetch_new_submissions(
-                            count + self.submission_count, attempt + 1, max_attempts
+                        current_limit = 1000 if count > 1000 else count
+                        new_limit = max(1, current_limit // 2)
+                        self.set_url_param("limit", new_limit)
+                        self._print(
+                            f"Unterminated string error: retrying with limit={new_limit}"
                         )
+                        if attempt < max_attempts:
+                            sleep(0.666)
+                            return self._fetch_new_submissions(
+                                count, attempt + 1, max_attempts, new_limit
+                            )
             self._print(f"Request failed: {http_err}")
         except (RequestException, JSONDecodeError, ValueError) as e:
+            if "Unterminated string starting at" in str(e):
+                # If this error occurs, retry with half the previous limit (minimum 1)
+                current_limit = 1000 if count > 1000 else count
+                new_limit = max(1, current_limit // 2)
+                self.set_url_param("limit", new_limit)
+                self._print(
+                    f"Unterminated string error: retrying with limit={new_limit}"
+                )
+                if attempt < max_attempts:
+                    sleep(0.666)
+                    return self._fetch_new_submissions(
+                        count, attempt + 1, max_attempts, new_limit
+                    )
             self._print(f"Request failed: {e}")
             if attempt < max_attempts:
                 sleep(0.666)
                 return self._fetch_new_submissions(
-                    count + self.submission_count, attempt + 1, max_attempts
+                    count + self.submission_count, attempt + 1, max_attempts, limit
                 )
-
         except KeyError as e:
             self._print(f"KeyError: {e}")
-
         return False
 
     def _fetch_updated_submissions(
@@ -598,7 +644,6 @@ class JotForm(ABC):
         Returns:
             bool: True if updates, False if not
         """
-        # Ensure attempt and max_attempts are integers (handle string inputs)
         attempt = int(attempt)
         max_attempts = int(max_attempts)
         self.set_url_param("limit", "1000")
@@ -615,16 +660,40 @@ class JotForm(ABC):
             )
             self.set_global_data()
             return True
-
+        except requests.exceptions.HTTPError as http_err:
+            if http_err.response is not None:
+                if http_err.response.status_code == 429:  # Too Many Requests
+                    self._print(f"Request failed: {http_err}\nRetrying with backoff...")
+                    if attempt < max_attempts:
+                        return self._fetch_updated_submissions(
+                            attempt + 1, max_attempts
+                        )
+                elif http_err.response.status_code == 504:  # Gateway timeout
+                    self._print(f"Request failed: {http_err}\nRetrying with backoff...")
+                    if attempt < max_attempts:
+                        self.set_url_param("limit", "500")
+                        self._print(
+                            f"Unterminated string error: retrying with limit=500"
+                        )
+                        sleep(0.666)
+                        return self._fetch_updated_submissions(
+                            attempt + 1, max_attempts
+                        )
+            self._print(f"Request failed: {http_err}")
         except (RequestException, JSONDecodeError, ValueError) as e:
+            if "Unterminated string starting at" in str(e):
+                # If this error occurs, retry with half the previous limit (minimum 1)
+                self.set_url_param("limit", "500")
+                self._print(f"Unterminated string error: retrying with limit=500")
+                if attempt < max_attempts:
+                    sleep(0.666)
+                    return self._fetch_updated_submissions(attempt + 1, max_attempts)
             self._print(f"Request failed: {e}")
             if attempt < max_attempts:
                 sleep(0.666)
                 return self._fetch_updated_submissions(attempt + 1, max_attempts)
-
         except KeyError as e:
             self._print(f"KeyError: {e}")
-
         return False
 
     def set_global_data(self) -> None:
@@ -773,7 +842,7 @@ class JotForm(ABC):
 
         params = {"filter": filter_str}
         # TODO: try raise for exectipns of requests and json decoding, and retry a few times with backoff since this is a user facing function and can be used in critical places
-        
+
         max_attempts = 3
         for attempt in range(max_attempts):
             try:
@@ -792,7 +861,7 @@ class JotForm(ABC):
                 return {}
             data = None
             try:
-                data = response.json()
+                data: Union[Dict[str, Any], None] = response.json()
             except (JSONDecodeError, ValueError) as decode_error:
                 if attempt < max_attempts - 1:
                     sleep(0.666)
