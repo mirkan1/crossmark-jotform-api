@@ -1,4 +1,5 @@
 # pyright: reportUnknownArgumentType=false, reportUnusedImport=false, reportUnknownParameterType=false, reportMissingParameterType=false, reportTypedDictNotRequiredAccess=false, reportUnknownMemberType=false, reportArgumentType=false, reportPrivateUsage=false
+import logging
 import unittest
 from unittest.mock import (
     Mock,
@@ -1066,13 +1067,13 @@ class TestJotFormErrorHandling(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch("builtins.print") as mock_print:
+        with patch("crossmark_jotform_api.jotForm.logger.log") as mock_log:
             with patch.object(JotForm, "_fetch_submissions_count", return_value=0):
                 jotform = JotForm(self.api_key, self.form_id)
                 jotform.debug = True
                 jotform._print("Test message")
 
-            mock_print.assert_called_with("Test message")
+            mock_log.assert_called_with(logging.INFO, "Test message")
 
     @patch("crossmark_jotform_api.jotForm.requests.get")
     def test_debug_print_disabled(self, mock_get):
@@ -1085,13 +1086,13 @@ class TestJotFormErrorHandling(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch("builtins.print") as mock_print:
+        with patch("crossmark_jotform_api.jotForm.logger.log") as mock_log:
             with patch.object(JotForm, "_fetch_submissions_count", return_value=0):
                 jotform = JotForm(self.api_key, self.form_id)
                 jotform.debug = False
                 jotform._print("Test message")
 
-            mock_print.assert_not_called()
+            mock_log.assert_not_called()
 
     @patch("crossmark_jotform_api.jotForm.requests.get")
     @patch("crossmark_jotform_api.jotForm.requests.delete")
