@@ -769,11 +769,13 @@ class TestJotFormUpdateAnswers(unittest.TestCase):
         mock_get_response.json.return_value = {
             "content": [self.sample_submission],
             "resultSet": {"offset": 0, "limit": 1000, "count": 1},
+            "message": "success",
         }
         mock_get.return_value = mock_get_response
 
         mock_post_response = Mock()
         mock_post_response.status_code = 200
+        mock_post_response.json.return_value = {"message": "success"}
         mock_post.return_value = mock_post_response
 
         with patch.object(JotForm, "_fetch_submissions_count", return_value=1):

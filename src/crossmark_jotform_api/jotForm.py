@@ -410,6 +410,10 @@ class JotForm(ABC):
                     data[f"submission[{q}]"] = answer
         return self.create_submission(data)
 
+    def _set_limit_left(self, limit_left: Optional[int]) -> None:
+        if limit_left is not None:
+            logger.info(f"API rate limit left: {limit_left}")
+
     def update_submission_answers_batch(
         self, submission_id: Union[int, str], answers: Dict[str, AnswerType]
     ) -> bool:
@@ -426,6 +430,8 @@ class JotForm(ABC):
         for answer_key, answer_value in answers.items():
             if isinstance(answer_value, list):
                 data[f"submission[{answer_key}][]"] = answer_value
+            elif answer_value == "" or answer_value is None:
+                data[f"submission[{answer_key}]"] = ""
             else:
                 data[f"submission[{answer_key}]"] = answer_value
         url = f"https://api.jotform.com/submission/{submission_id}"
@@ -436,6 +442,11 @@ class JotForm(ABC):
             timeout=self.timeout,
         )
         if response.status_code == 200:
+            message = response.json().get("message", "")
+            limit_left = response.json().get("limit-left", None)
+            self._set_limit_left(limit_left)
+            if message.lower() != "success":
+                return False
             for answer_key, answer_value in answers.items():
                 self.submission_data[str(submission_id)].set_answer(
                     answer_key, answer_value

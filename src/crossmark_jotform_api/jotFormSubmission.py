@@ -367,18 +367,25 @@ class JotFormSubmission(ABC):
         else:
             return email
 
-    def get_value(self, obj: AnswerValue) -> Optional[AnswerValue]:
+    def get_value(self, obj: AnswerValue) -> Union[str, AnswerValue, None, bool, int, float]:
         """## This function gets the value from the object
             When you call this it wont raise an error which makes it the safer version of ["answer"]
-            Example:
-            self.get_value(self.get_answer_by_text("CASE"))
-            self.get_answer_by_text("CASE")["answer"]
 
-        Args:
-            obj (AnswerValue): _description_
+            ### argument object AnswerValue can be in the format of:
+            - `text`: NotRequired[str]
+            - `key`: str
+            - `order`: NotRequired[str]
+            - `answer`: NotRequired[AnswerType]
+            - `prettyFormat`: NotRequired[str]
+            - `file`: NotRequired[Optional[str]]
+            - `type`: NotRequired[str]
+            - `name`: Optional[NotRequired[str]]
 
-        Returns:
-            Optional[Union[AnswerValue, AnswerValue]]: _description_
+            ### Example:
+            - `get_value(get_answer_by_text("CASE")) == get_answer_by_text("CASE")["answer"]`
+            - It won't throw an error if the answer is missing.
+            ### Returns:
+            - first element of the list else the value itself
         """
         if isinstance(obj, str):
             return obj.strip()  # type: ignore
