@@ -5,7 +5,6 @@ from crossmark_jotform_api.utils import fix_query_key
 
 
 class TestUtils(unittest.TestCase):
-
     def test_fix_query_key_adds_q_prefix(self):
         """Test that fix_query_key adds 'q' prefix when missing"""
         result = fix_query_key("3:matches")

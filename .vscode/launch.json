@@ -21,6 +21,12 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": true
+        },{
+            "name": "Formatter",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/formatter.py",
+            "console": "integratedTerminal"
         }
     ]
 }

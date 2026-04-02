@@ -46,6 +46,43 @@ class JotFormSubmission(ABC):
         self.answers_arr = self.set_answers(self.answers)
         self.emails = self.get_emails()
 
+    def __additem__(self, answer: AnswerValue):
+        """Add an answer using + operator.
+
+        Args:
+            answer: The answer to add
+        Example:
+            submission_instance + answer
+        """        
+        if "key" not in answer:
+            raise KeyError("Answer must have a 'key' field")
+        key = answer["key"]
+        if key in self.answers:
+            print(f"Answer with key '{key}' already exists, it will be overwritten")
+            return self.set_answer_by_key(key, answer.get("answer"))
+        self.answers[key] = answer
+        self.answers_arr.append(answer)
+
+    def __delitem__(self, key: str):
+        """Delete an answer using del operator.
+
+        Args:
+            key: The answer key to delete
+
+        Example:
+            del submission_instance[key]
+        """
+        if key not in self.answers:
+            raise KeyError(f"Answer with key '{key}' not found")
+
+        # Remove from answers dict
+        del self.answers[key]
+
+        # Remove from answers_arr
+        self.answers_arr = [
+            answer for answer in self.answers_arr if answer["key"] != key
+        ]
+
     def set_answers(self, answers: AnswersDict) -> List[AnswerValue]:
         """## This function sets the answers array
 
@@ -104,6 +141,8 @@ class JotFormSubmission(ABC):
 
         for i, answer in enumerate(self.answers_arr):
             if answer["key"] == answer_key:
+                if answer_value == self.answers_arr[i].get("answer"):
+                    return
                 self.answers_arr[i]["answer"] = answer_value
         self.answers[answer_key]["answer"] = answer_value
         self.update_submission(self.id, answer_key, answer_value, self.api_key)
@@ -115,11 +154,16 @@ class JotFormSubmission(ABC):
             answer_text (str): answer_text of the answer
             answer_value (AnswerType): value you want to set for the answer
         """
+        answer_key = None
         for i, answer in enumerate(self.answers_arr):
-            if answer.get("text") and answer.get("text").upper() == answer_text.upper():  # type: ignore
+            if answer.get("text", "").upper() == answer_text.upper():  # type: ignore
+                if answer_value == self.answers_arr[i].get("answer"):
+                    return
                 self.answers_arr[i]["answer"] = answer_value
-        self.get_answer_by_text(answer_text)["answer"] = answer_value
-        answer_key = self.get_answer_by_text(answer_text).get("key")
+                answer_key = answer["key"]
+        if not answer_key:
+            raise ValueError(f"Answer with text '{answer_text}' not found")
+        self.answers[answer_key]["answer"] = answer_value
         self.update_submission(self.id, answer_key, answer_value, self.api_key)
 
     def set_answer_by_name(self, answer_name: str, answer_value: AnswerType) -> None:
@@ -129,11 +173,15 @@ class JotFormSubmission(ABC):
             answer_name (str): answer_name of the answer
             answer_value (AnswerType): value you want to set for the answer
         """
+        answer_key = None
         for i, answer in enumerate(self.answers_arr):
             if answer["name"] == answer_name:
                 self.answers_arr[i]["answer"] = answer_value
-        self.get_answer_by_name(answer_name)["answer"] = answer_value
-        answer_key = self.get_answer_by_name(answer_name).get("key")
+                answer_key = answer["key"]
+                break
+        if not answer_key:
+            raise ValueError(f"Answer with name '{answer_name}' not found")
+        self.answers[answer_key]["answer"] = answer_value
         self.update_submission(self.id, answer_key, answer_value, self.api_key)
 
     def set_answer_by_key(self, answer_key: str, answer_value: AnswerType) -> None:
@@ -145,8 +193,10 @@ class JotFormSubmission(ABC):
         """
         for i, answer in enumerate(self.answers_arr):
             if answer["key"] == answer_key:
+                if answer_value == self.answers_arr[i].get("answer"):
+                    return
                 self.answers_arr[i]["answer"] = answer_value
-        self.get_answer_by_key(answer_key)["answer"] = answer_value
+        self.answers[answer_key]["answer"] = answer_value
         self.update_submission(self.id, answer_key, answer_value, self.api_key)
 
     @classmethod
@@ -239,26 +289,6 @@ class JotFormSubmission(ABC):
                 return _answer
         raise ValueError(f"Answer with key '{key}' not found")
 
-    def __delitem__(self, key: str):
-        """Delete an answer using del operator.
-
-        Args:
-            key: The answer key to delete
-
-        Example:
-            del submission_instance[key]
-        """
-        if key not in self.answers:
-            raise KeyError(f"Answer with key '{key}' not found")
-
-        # Remove from answers dict
-        del self.answers[key]
-
-        # Remove from answers_arr
-        self.answers_arr = [
-            answer for answer in self.answers_arr if answer["key"] != key
-        ]
-
     def get_emails(self) -> List[str]:
         """## This function gets the emails from the answers array
 
@@ -300,7 +330,7 @@ class JotFormSubmission(ABC):
         """If store is in the format of 'store | store_number', return store_number."""
         return store.split(" | ")[0]
 
-    def to_dict(self) -> Dict[str, Union[str, int, bool, List[str]]]:
+    def to_dict(self) -> Dict[str, Union[str, int, bool, List[str], List[AnswerValue]]]:
         """## This function returns the submission object as a dictionary,
         recomendation use case is to inherit this function in your own to_dict call
 
@@ -317,6 +347,7 @@ class JotFormSubmission(ABC):
             "notes": self.notes,
             "updated_at": self.updated_at,
             "emails": self.get_emails(),
+            "answers": self.answers_arr,
         }
 
     def turn_into_american_datetime_format(
@@ -367,25 +398,27 @@ class JotFormSubmission(ABC):
         else:
             return email
 
-    def get_value(self, obj: AnswerValue) -> Union[str, AnswerValue, None, bool, int, float]:
+    def get_value(
+        self, obj: AnswerValue
+    ) -> Union[str, AnswerValue, None, bool, int, float]:
         """## This function gets the value from the object
-            When you call this it wont raise an error which makes it the safer version of ["answer"]
+        When you call this it wont raise an error which makes it the safer version of ["answer"]
 
-            ### argument object AnswerValue can be in the format of:
-            - `text`: NotRequired[str]
-            - `key`: str
-            - `order`: NotRequired[str]
-            - `answer`: NotRequired[AnswerType]
-            - `prettyFormat`: NotRequired[str]
-            - `file`: NotRequired[Optional[str]]
-            - `type`: NotRequired[str]
-            - `name`: Optional[NotRequired[str]]
+        ### argument object AnswerValue can be in the format of:
+        - `text`: NotRequired[str]
+        - `key`: str
+        - `order`: NotRequired[str]
+        - `answer`: NotRequired[AnswerType]
+        - `prettyFormat`: NotRequired[str]
+        - `file`: NotRequired[Optional[str]]
+        - `type`: NotRequired[str]
+        - `name`: Optional[NotRequired[str]]
 
-            ### Example:
-            - `get_value(get_answer_by_text("CASE")) == get_answer_by_text("CASE")["answer"]`
-            - It won't throw an error if the answer is missing.
-            ### Returns:
-            - first element of the list else the value itself
+        ### Example:
+        - `get_value(get_answer_by_text("CASE")) == get_answer_by_text("CASE")["answer"]`
+        - It won't throw an error if the answer is missing.
+        ### Returns:
+        - first element of the list else the value itself
         """
         if isinstance(obj, str):
             return obj.strip()  # type: ignore

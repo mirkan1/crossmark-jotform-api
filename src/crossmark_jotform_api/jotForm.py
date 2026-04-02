@@ -785,7 +785,7 @@ class JotForm(ABC):
             self._reset_url_params()
             self._print(
                 f"[INFO] Update process is completed.\
-                Last update was {int(its_been/60)} minutes ago."
+                Last update was {int(its_been / 60)} minutes ago."
             )
             self.updating_process = False
             return True

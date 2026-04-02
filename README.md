@@ -61,7 +61,7 @@ This project includes a comprehensive CI/CD pipeline that ensures code quality a
 
 ### Automated Testing
 
-- **Multi-Python Version Testing**: Tests run on Python 3.8, 3.9, 3.10, 3.11, and 3.12
+- **Multi-Python Version Testing**: Tests run on Python 3.10, 3.11, and 3.12
 - **Pull Request Validation**: All PRs are automatically tested before merging
 - **Coverage Threshold**: Minimum 50% test coverage required for CI to pass
 - **Quality Gates**: Tests must pass before deployment to PyPI

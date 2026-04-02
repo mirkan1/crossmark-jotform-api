@@ -1,6 +1,7 @@
 
 # JotFormSubmission Library Change Log
-
+- 2026-04-02 v2.6.9:
+  - changes related to getting better value for the answer and setting the answer, now if the answer with the same key already exists, it will print a message and overwrite the answer instead of raising an error.
 - 2026-03-29 v2.6.8:
   - if post value is null makes it empty string to avoid the error on jotform side, need further investigation on this.
 - 2026-03-24 v2.6.7:
