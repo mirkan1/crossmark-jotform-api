@@ -46,22 +46,22 @@ class JotFormSubmission(ABC):
         self.answers_arr = self.set_answers(self.answers)
         self.emails = self.get_emails()
 
-    def __additem__(self, answer: AnswerValue):
+    def __additem__(self, answer: AnswerValue, override: bool = True):
         """Add an answer using + operator.
 
         Args:
             answer: The answer to add
         Example:
             submission_instance + answer
-        """        
+        """
         if "key" not in answer:
             raise KeyError("Answer must have a 'key' field")
         key = answer["key"]
-        if key in self.answers:
-            print(f"Answer with key '{key}' already exists, it will be overwritten")
+        if override and key in self.answers:
             return self.set_answer_by_key(key, answer.get("answer"))
-        self.answers[key] = answer
-        self.answers_arr.append(answer)
+        else:
+            self.answers[key] = answer
+            self.answers_arr.append(answer)
 
     def __delitem__(self, key: str):
         """Delete an answer using del operator.
