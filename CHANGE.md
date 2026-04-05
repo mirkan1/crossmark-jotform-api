@@ -1,5 +1,8 @@
 
 # JotFormSubmission Library Change Log
+
+- 2026-04-04 v2.6.11:
+  - fixed a bug where if the answer with the same key already exists, it was not updating the answer via api, now it will update the answer if the override parameter is set to True.
 - 2026-04-02 v2.6.9:
   - changes related to getting better value for the answer and setting the answer, now if the answer with the same key already exists, it will print a message and overwrite the answer instead of raising an error.
 - 2026-03-29 v2.6.8:

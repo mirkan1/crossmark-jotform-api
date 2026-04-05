@@ -26,7 +26,7 @@ class TestJotFormStress(unittest.TestCase):
         self.assertIsNotNone(form, "Expected form metadata from JotForm API")
 
         content = form.get("content", {}) if form else {}
-        total_submissions = int(content.get("count", 0))
+        total_submissions = int(content.get("count", 0))  # type: ignore[assignment]
 
         if total_submissions == 0:
             self.skipTest("Configured form has 0 submissions.")

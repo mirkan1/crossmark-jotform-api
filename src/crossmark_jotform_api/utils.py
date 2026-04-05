@@ -1,10 +1,12 @@
+from typing import Any
+
 def fix_query_key(key: str) -> str:
     if not key.startswith("q"):
         print(f"[JotForm] Filter key '{key}' does not start with 'q', prepending 'q'.")
         return "q" + key
     return key
 
-def parse_boolean(s):
+def parse_boolean(s: Any) -> bool:
     """Takes a string and returns the equivalent as a boolean value."""
     if not s:
         return False

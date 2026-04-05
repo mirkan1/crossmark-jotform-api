@@ -775,7 +775,7 @@ class JotForm(ABC):
                 self._fetch_updated_submissions()
             else:
                 count = self._fetch_submissions_count()
-                if count != self.submission_count:
+                if count > 0 and count != self.submission_count:
                     # only pull the new submissions if there is a change in the submission count
                     self._fetch_new_submissions(count)
                 else:
