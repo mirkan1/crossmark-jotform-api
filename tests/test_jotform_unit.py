@@ -230,7 +230,9 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(
+            JotForm, "_fetch_submissions_count", side_effect=[0, 1, 1, 1]
+        ):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.get_submission_answers_by_question_id("1001")
 
@@ -261,13 +263,70 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(
+            JotForm, "_fetch_submissions_count", side_effect=[0, 1, 1, 1]
+        ):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.get_submission_answers_by_question_id("1001")
 
         # Should return empty dict
         self.assertIsInstance(result, dict)
         self.assertEqual(len(result), 0)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_fetch_new_submissions_completes_on_exact_page_multiple(self, mock_get):
+        """Test _fetch_new_submissions finalizes state when count is an exact page multiple."""
+        first_page = Mock()
+        first_page.raise_for_status.return_value = None
+        first_page.json.return_value = {
+            "content": [
+                {
+                    "id": str(index),
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {},
+                }
+                for index in range(1000)
+            ],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 1000},
+        }
+
+        second_page = Mock()
+        second_page.raise_for_status.return_value = None
+        second_page.json.return_value = {
+            "content": [
+                {
+                    "id": str(1000 + index),
+                    "form_id": self.form_id,
+                    "ip": "192.168.1.1",
+                    "created_at": "2024-01-01 12:00:00",
+                    "status": "ACTIVE",
+                    "new": "1",
+                    "flag": "0",
+                    "notes": "",
+                    "updated_at": "2024-01-01 12:00:00",
+                    "answers": {},
+                }
+                for index in range(1000)
+            ],
+            "resultSet": {"offset": 1000, "limit": 1000, "count": 1000},
+        }
+
+        mock_get.side_effect = [first_page, second_page]
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=0):
+            jotform = JotForm(self.api_key, self.form_id)
+
+        result = jotform._fetch_new_submissions(2000)
+
+        self.assertTrue(result)
+        self.assertEqual(jotform.get_submission_count(), 2000)
 
     @patch("crossmark_jotform_api.jotForm.requests.get")
     def test_get_submission_answers_by_question_alias(self, mock_get):
@@ -293,7 +352,9 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(
+            JotForm, "_fetch_submissions_count", side_effect=[0, 1, 1, 1, 1, 1]
+        ):
             jotform = JotForm(self.api_key, self.form_id)
             # Both methods should return the same result
             result1 = jotform.get_submission_answers_by_question("1001")
@@ -331,7 +392,7 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             # The method compares the answer object, not just the value
             answer_obj = jotform.submission_data["1001"].get_answer_by_text("Full Name")
@@ -371,7 +432,7 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.get_submission_by_text("Full Name", "Jane Doe")
 
@@ -408,7 +469,7 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             # The method compares the answer object, not just the value
             answer_obj = jotform.submission_data["1001"].get_answer_by_name("fullName")
@@ -448,7 +509,7 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.get_submission_by_name("fullName", "Jane Doe")
 
@@ -485,7 +546,7 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             # The method compares the answer object, not just the value
             answer_obj = jotform.submission_data["1001"].get_answer_by_key("1")
@@ -525,7 +586,7 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.get_submission_by_key("1", "Jane Doe")
 
@@ -603,7 +664,7 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.get_answer_by_text("1001", "Full Name")
 
@@ -642,7 +703,7 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.get_answer_by_name("1001", "fullName")
 
@@ -681,7 +742,7 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.get_answer_by_key("1001", "1")
 
@@ -720,7 +781,7 @@ class TestJotFormUnit(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.get_answer_by_id("1001", "1")
 

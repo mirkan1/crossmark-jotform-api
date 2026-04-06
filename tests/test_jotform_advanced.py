@@ -230,7 +230,9 @@ class TestJotFormAdvanced(unittest.TestCase):
         bad_response.json.side_effect = ValueError("Unterminated string")
         mock_get.return_value = bad_response
 
-        with patch.object(JotForm, "update"):
+        with patch.object(
+            JotForm, "_fetch_submissions_count", return_value=0
+        ), patch.object(JotForm, "update"):
             jotform = JotForm(self.api_key, self.form_id)
 
         jotform.submission_count = 0
@@ -250,7 +252,9 @@ class TestJotFormAdvanced(unittest.TestCase):
         bad_response.json.side_effect = ValueError("Unterminated string")
         mock_get.return_value = bad_response
 
-        with patch.object(JotForm, "update"):
+        with patch.object(
+            JotForm, "_fetch_submissions_count", return_value=0
+        ), patch.object(JotForm, "update"):
             jotform = JotForm(self.api_key, self.form_id)
 
         result = jotform._fetch_updated_submissions(max_attempts=1)
@@ -693,7 +697,7 @@ class TestJotFormUpdateAnswers(unittest.TestCase):
         mock_post_response.status_code = 200
         mock_post.return_value = mock_post_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.update_submission_answer(
                 self.submission_id, "1", "Jane Doe"
@@ -722,7 +726,7 @@ class TestJotFormUpdateAnswers(unittest.TestCase):
         mock_post_response.status_code = 200
         mock_post.return_value = mock_post_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             new_colors = ["green", "yellow", "purple"]
             result = jotform.update_submission_answer(
@@ -778,7 +782,7 @@ class TestJotFormUpdateAnswers(unittest.TestCase):
         mock_post_response.json.return_value = {"message": "success"}
         mock_post.return_value = mock_post_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             answers = {"1": "Jane Doe", "2": ["green", "yellow"]}
             result = jotform.update_submission_answers_batch(
@@ -866,7 +870,9 @@ class TestJotFormQueryMethods(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "update"):
+        with patch.object(
+            JotForm, "_fetch_submissions_count", return_value=0
+        ), patch.object(JotForm, "update"):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.request_submission_by_case_id("CASE-12345")
 
@@ -906,7 +912,7 @@ class TestJotFormQueryMethods(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.get_user_data_by_email("john@example.com")
 
@@ -933,7 +939,7 @@ class TestJotFormQueryMethods(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.get_user_data_by_email("JOHN@EXAMPLE.COM")
 
@@ -1125,7 +1131,7 @@ class TestJotFormErrorHandling(unittest.TestCase):
         delete_response.status_code = 200
         mock_delete.return_value = delete_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.delete_submission("1001")
 
@@ -1161,7 +1167,7 @@ class TestJotFormErrorHandling(unittest.TestCase):
         delete_response.status_code = 404
         mock_delete.return_value = delete_response
 
-        with patch.object(JotForm, "_fetch_submissions_count", return_value=1):
+        with patch.object(JotForm, "_fetch_submissions_count", side_effect=[0, 1]):
             jotform = JotForm(self.api_key, self.form_id)
             result = jotform.delete_submission("1001")
 

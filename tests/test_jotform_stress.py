@@ -1,4 +1,5 @@
 import os
+import math
 import time
 import unittest
 
@@ -37,8 +38,13 @@ class TestJotFormStress(unittest.TestCase):
         self.jotform.submission_count = 0
         self.jotform._reset_url_params()
 
+        page_limit = min(500, max(1, math.ceil(total_submissions / 10)))
+
         started_at = time.perf_counter()
-        pulled = self.jotform._fetch_new_submissions(total_submissions)
+        pulled = self.jotform._fetch_new_submissions(
+            total_submissions,
+            limit=page_limit,
+        )
         elapsed_seconds = time.perf_counter() - started_at
 
         actual_count = self.jotform.get_submission_count()
@@ -50,6 +56,7 @@ class TestJotFormStress(unittest.TestCase):
             (
                 f"Submission count mismatch after stress pull: "
                 f"expected={total_submissions}, actual={actual_count}, "
+                f"page_limit={page_limit}, "
                 f"elapsed={elapsed_seconds:.2f}s"
             ),
         )

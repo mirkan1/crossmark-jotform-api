@@ -581,21 +581,25 @@ class JotForm(ABC):
             self.submission_data.update(
                 self._set_get_submission_data(data["content"], self.api_key)
             )
-            if len(data["content"]) < limit - 1:
+            fetched_count = len(data["content"])
+            if fetched_count == 0:
                 self.set_global_data()
                 return True
-            elif len(data["content"]) == limit and count > limit:
-                self.set_url_param("offset", data["resultSet"]["offset"] + limit)
-                return self._fetch_new_submissions(
-                    count - limit, attempt, max_attempts, limit
-                )
-            elif count >= 1000:
-                self.set_url_param("offset", data["resultSet"]["offset"] + limit)
-                return self._fetch_new_submissions(
-                    count - limit, attempt, max_attempts, limit
-                )
-            self.set_global_data()
-            return True
+            remaining_count = max(0, count - fetched_count)
+            if fetched_count < limit or remaining_count == 0:
+                self.set_global_data()
+                return True
+
+            current_offset = int(data["resultSet"].get("offset", 0))
+            next_offset = current_offset + fetched_count
+            if next_offset <= current_offset:
+                self.set_global_data()
+                return True
+
+            self.set_url_param("offset", next_offset)
+            return self._fetch_new_submissions(
+                remaining_count, attempt, max_attempts, limit
+            )
         except requests.exceptions.HTTPError as http_err:
             if http_err.response is not None:
                 if http_err.response.status_code == 429:  # Too Many Requests
