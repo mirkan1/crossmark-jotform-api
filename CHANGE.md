@@ -1,6 +1,14 @@
 
 # JotFormSubmission Library Change Log
 
+- 2026-04-07 v2.6.12:
+  - Logging is now configured at the top of the file.
+  - Added a total_submissions attribute to the JotForm class.
+  - Improved the update logic to better handle new and updated submissions, including more robust locking and status messages.
+  - Enhanced docstrings and parameter handling for several methods.
+  - Improved error messages and retry logic for HTTP 429 and 504 errors.
+  - Minor docstring and formatting improvements.
+  - The print statement in fix_query_key was removed, and the docstring was improved.
 - 2026-04-04 v2.6.11:
   - fixed a bug where if the answer with the same key already exists, it was not updating the answer via api, now it will update the answer if the override parameter is set to True.
 - 2026-04-02 v2.6.9:

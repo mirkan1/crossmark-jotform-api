@@ -24,6 +24,11 @@ from .types import (
 )
 import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 logger = logging.getLogger(__name__)
 
 
@@ -48,6 +53,7 @@ class JotForm(ABC):
     updating_process: bool
     submission_count: int
     timeout: int
+    total_submissions: int
 
     def __init__(self, api_key: str, form_id: str, timeout: int = 45):
         self.update_timestamp = datetime.now().timestamp()
@@ -65,6 +71,7 @@ class JotForm(ABC):
         self.updating_process = False
         self.submission_count = 0
         self.timeout = timeout
+        self.total_submissions = self._fetch_submissions_count()
         self.update()
 
     @classmethod
@@ -411,6 +418,7 @@ class JotForm(ABC):
         return self.create_submission(data)
 
     def _set_limit_left(self, limit_left: Optional[int]) -> None:
+        # TODO
         if limit_left is not None:
             logger.info(f"API rate limit left: {limit_left}")
 
@@ -489,17 +497,17 @@ class JotForm(ABC):
         """Sets the URL parameter.
 
         Available keys:
-            - `apiKey`: Your JotForm API key for authentication.\n
-            - `limit`: Specifies the maximum number of results to return.\n
-            - `offset`: Specifies the number of results to skip before starting to return results.\n
-            - `orderby`: Determines the field by which to sort the results.\n
-            - `filter`: Applies a filter to the results based on specified criteria.\n
-            - `search`: Searches for a specific term within the results.\n
-            - `sort`: Specifies the sort order of the results (e.g., ascending or descending).\n
-            - `fields`: Specifies which fields to include in the response.\n
-            - `id`: Filters results by a specific ID.\n
-            - `created_at`: Filters results based on their creation date.\n
-            - `updated_at`: Filters results based on their last updated date.
+            - `apiKey:` Your JotForm API key for authentication.
+            - `limit:` Specifies the maximum number of results to return.
+            - `offset:` Specifies the number of results to skip before starting to return results.
+            - `orderby:` Determines the field by which to sort the results.
+            - `filter:` Applies a filter to the results based on specified criteria.
+            - `search:` Searches for a specific term within the results.
+            - `sort:` Specifies the sort order of the results (e.g., ascending or descending).
+            - `fields:` Specifies which fields to include in the response.
+            - `id:` Filters results by a specific ID.
+            - `created_at:` Filters results based on their creation date.
+            - `updated_at:` Filters results based on their last updated date.
 
         Args:
             key (str): The key to set in the URL.
@@ -545,27 +553,24 @@ class JotForm(ABC):
         count: int,
         attempt: int = 0,
         max_attempts: int = 5,
-        limit: Optional[int] = None,
+        limit: int = 1000,
     ) -> bool:
-        """## It is already newest to oldest so we can request one query, and it should be enough
+        """### It is already newest to oldest so we can request one query, and it should be enough
 
-        Args:
-            count (_type_): Fresh count of the submissions
-            attempt (_type_, optional): Current number of attempts. Defaults to 0.
-            max_attempts (_type_, optional): Maximum number of attempts. Defaults to 5.
+        #### Args:
+            - `count:` Fresh count of the submissions
+            - `attempt:` Current number of attempts. Defaults to 0.
+            - `max_attempts:` Maximum number of attempts. Defaults to 5.
+            - `limit:` Limit for the number of submissions to fetch in one request. Defaults to None.
 
-        Returns:
-            bool: True if updates, False if not
+        #### Returns:
+            - `bool:` True if updated, False if not
         """
-        attempt = int(attempt)
-        max_attempts = int(max_attempts)
-        count = count - self.submission_count
         if count <= 0:
             return False
-        limit = limit or (1000 if count > 1000 else count)
-        logger.info(
-            f"Fetching new submissions: count={count}, attempt={attempt}, limit={limit}"
-        )
+        attempt = int(attempt)
+        max_attempts = int(max_attempts)
+        limit = 1000 if limit > 1000 else limit
         self.set_url_param("limit", limit)
         self.set_url_param("orderby", "id")
         try:
@@ -584,7 +589,7 @@ class JotForm(ABC):
                 return self._fetch_new_submissions(
                     count - limit, attempt, max_attempts, limit
                 )
-            elif limit >= 1000:
+            elif count >= 1000:
                 self.set_url_param("offset", data["resultSet"]["offset"] + limit)
                 return self._fetch_new_submissions(
                     count - limit, attempt, max_attempts, limit
@@ -594,16 +599,16 @@ class JotForm(ABC):
         except requests.exceptions.HTTPError as http_err:
             if http_err.response is not None:
                 if http_err.response.status_code == 429:  # Too Many Requests
-                    self._print(f"Request failed: {http_err}\nRetrying with backoff...")
+                    self._print(f"Request failed: {http_err}. Retrying with backoff...")
                     if attempt < max_attempts:
                         return self._fetch_new_submissions(
-                            count + self.submission_count,
+                            count,
                             attempt + 1,
                             max_attempts,
                             limit,
                         )
                 elif http_err.response.status_code == 504:  # Gateway timeout
-                    self._print(f"Request failed: {http_err}\nRetrying with backoff...")
+                    self._print(f"Request failed: {http_err}. Retrying with backoff...")
                     if attempt < max_attempts:
                         current_limit = 1000 if count > 1000 else count
                         new_limit = max(1, current_limit // 2)
@@ -642,7 +647,7 @@ class JotForm(ABC):
         return False
 
     def _fetch_updated_submissions(
-        self, attempt: int = 0, max_attempts: int = 5
+        self, attempt: int = 0, max_attempts: int = 5, limit: Union[str, int] = 1000
     ) -> bool:
         """## This function gets the last updated data from the Jotform API.
             Aim of this function is to get last 1000 submissions sorted by updated_at.
@@ -657,7 +662,7 @@ class JotForm(ABC):
         """
         attempt = int(attempt)
         max_attempts = int(max_attempts)
-        self.set_url_param("limit", "1000")
+        self.set_url_param("limit", limit)
         self.set_url_param("orderby", "updated_at")
         self.set_url_param("offset", "0")
         try:
@@ -674,13 +679,13 @@ class JotForm(ABC):
         except requests.exceptions.HTTPError as http_err:
             if http_err.response is not None:
                 if http_err.response.status_code == 429:  # Too Many Requests
-                    self._print(f"Request failed: {http_err}\nRetrying with backoff...")
+                    self._print(f"Request failed: {http_err}. Retrying with backoff...")
                     if attempt < max_attempts:
                         return self._fetch_updated_submissions(
                             attempt + 1, max_attempts
                         )
                 elif http_err.response.status_code == 504:  # Gateway timeout
-                    self._print(f"Request failed: {http_err}\nRetrying with backoff...")
+                    self._print(f"Request failed: {http_err}. Retrying with backoff...")
                     if attempt < max_attempts:
                         self.set_url_param("limit", "500")
                         self._print(
@@ -765,33 +770,37 @@ class JotForm(ABC):
         Returns:
             bool: True if updates, False if not
         """
-        if not self.updating_process:
-            self.updating_process = True
-            now = datetime.now().timestamp()
-            its_been = now - self.update_timestamp
+        if self.updating_process:
+            self._reset_url_params()
+            self._print("Update process is already running.")
+            return False
+        self.updating_process = True
+        now = datetime.now().timestamp()
+        its_been = now - self.update_timestamp
+        try:
             if its_been > 300 or force:
                 # been more than 5 minutes so only pull the 100 posibly recently updated submissions
                 self.update_timestamp = now
-                self._fetch_updated_submissions()
+                self._fetch_updated_submissions(limit=100)
+                self._fetch_new_submissions(100, limit=100)
+                self._print(
+                    f"Update process is completed. Last update was {int(its_been / 60)} minutes ago."
+                )
             else:
-                count = self._fetch_submissions_count()
-                if count > 0 and count != self.submission_count:
-                    # only pull the new submissions if there is a change in the submission count
-                    self._fetch_new_submissions(count)
+                count = self._fetch_submissions_count() - self.total_submissions
+                if count > 0:
+                    self._fetch_new_submissions(count, limit=count)
+                    self.total_submissions += count
+                    self._print(
+                        f"Update process is completed. Last update was {int(its_been / 60)} minutes ago.\n{count} new submissions found."
+                    )
                 else:
-                    self.updating_process = False
-                    self._print("[INFO] No new submissions.")
                     return False
-            self._reset_url_params()
-            self._print(
-                f"[INFO] Update process is completed.\
-                Last update was {int(its_been / 60)} minutes ago."
-            )
-            self.updating_process = False
             return True
-        self._reset_url_params()
-        self._print("[INFO] Update process is already running.")
-        return False
+        finally:
+            # Always release the update lock even if a request is interrupted.
+            self.updating_process = False
+            self._reset_url_params()
 
     def _reset_url_params(self) -> None:
         self.set_url_param("offset", "0")

@@ -1,8 +1,8 @@
 from typing import Any
 
 def fix_query_key(key: str) -> str:
+    """ Ensures that the query key starts with 'q'. If it doesn't, prepends 'q' to the key."""
     if not key.startswith("q"):
-        print(f"[JotForm] Filter key '{key}' does not start with 'q', prepending 'q'.")
         return "q" + key
     return key
 
