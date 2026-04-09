@@ -53,7 +53,7 @@ class JotForm(ABC):
     updating_process: bool
     submission_count: int
     timeout: int
-    total_submissions: int
+    total_submissions: int = 0
 
     def __init__(self, api_key: str, form_id: str, timeout: int = 45):
         self.update_timestamp = datetime.now().timestamp()
@@ -787,6 +787,7 @@ class JotForm(ABC):
                 self.update_timestamp = now
                 self._fetch_updated_submissions(limit=100)
                 self._fetch_new_submissions(100, limit=100)
+                self.total_submissions = self._fetch_submissions_count()
                 self._print(
                     f"Update process is completed. Last update was {int(its_been / 60)} minutes ago."
                 )

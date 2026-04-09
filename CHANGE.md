@@ -1,7 +1,9 @@
 
 # JotFormSubmission Library Change Log
 
-- 2026-04-07 v2.6.12:
+- 2026-04-07 v2.6.14:
+  - total_submissions is now set to 0 in the constructor of the JotForm class, ensuring it is always initialized properly.
+- 2026-04-07 v2.6.13:
   - Logging is now configured at the top of the file.
   - Added a total_submissions attribute to the JotForm class.
   - Improved the update logic to better handle new and updated submissions, including more robust locking and status messages.

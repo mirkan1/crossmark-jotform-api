@@ -1,6 +1,7 @@
 # pyright: reportUnknownArgumentType=false, reportUnusedImport=false, reportUnknownParameterType=false, reportMissingParameterType=false, reportTypedDictNotRequiredAccess=false, reportUnknownMemberType=false, reportArgumentType=false, reportPrivateUsage=false, reportOptionalSubscript=false
 import unittest
 from unittest.mock import Mock, patch, MagicMock
+from datetime import datetime
 from crossmark_jotform_api.jotForm import JotForm, JotFormSubmission
 
 
@@ -327,6 +328,30 @@ class TestJotFormUnit(unittest.TestCase):
 
         self.assertTrue(result)
         self.assertEqual(jotform.get_submission_count(), 2000)
+
+    @patch("crossmark_jotform_api.jotForm.requests.get")
+    def test_update_initializes_missing_total_submissions(self, mock_get):
+        """Regression: update should not fail when total_submissions is missing."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "content": [],
+            "resultSet": {"offset": 0, "limit": 1000, "count": 0},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=0):
+            jotform = JotForm(self.api_key, self.form_id)
+
+        del jotform.total_submissions
+        jotform.update_timestamp = datetime.now().timestamp()
+
+        with patch.object(JotForm, "_fetch_submissions_count", return_value=0):
+            result = jotform.update()
+
+        self.assertFalse(result)
+        self.assertTrue(hasattr(jotform, "total_submissions"))
+        self.assertEqual(jotform.total_submissions, 0)
 
     @patch("crossmark_jotform_api.jotForm.requests.get")
     def test_get_submission_answers_by_question_alias(self, mock_get):
